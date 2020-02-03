@@ -1,25 +1,24 @@
 package io.horizontalsystems.tor.core
 
-import io.horizontalsystems.tor.TorConnectionInfo
-import io.horizontalsystems.tor.TorEventHandler
+import io.horizontalsystems.tor.Tor
 import io.reactivex.Single
 import io.reactivex.schedulers.Schedulers
 import net.freehaven.tor.control.TorControlConnection
 import java.io.*
 import java.net.Socket
-import java.util.*
 import java.util.logging.Logger
 
 
 class TorControl(
         private val fileControlPort: File,
         private val appCacheHome: File,
-        private val torEventHandler: TorEventHandler) {
+        private val torListener: Tor.Listener?) {
 
     private val logger = Logger.getLogger("TorControl")
 
     private val CONTROL_SOCKET_TIMEOUT = 60000
     private var controlConn: TorControlConnection? = null
+    private var torEventHandler: TorEventHandler? = null
 
     var torProcessId: Int = -1
 
@@ -29,14 +28,14 @@ class TorControl(
         }
     }
 
-    fun initConnection(maxTries: Int): Single<TorConnectionInfo> {
+    fun initConnection(maxTries: Int, torInfo: Tor.Info): Single<Tor.ConnectionInfo> {
 
         return createControlConn(maxTries)
                 .subscribeOn(Schedulers.io())
                 .map {
-                    configConnection(it)
+                    configConnection(it, torInfo)
                 }.onErrorReturn {
-                    TorConnectionInfo(-1)
+                    Tor.ConnectionInfo(-1)
                 }
     }
 
@@ -73,7 +72,7 @@ class TorControl(
         }
     }
 
-    private fun configConnection(conn: TorControlConnection): TorConnectionInfo {
+    private fun configConnection(conn: TorControlConnection, torInfo: Tor.Info): Tor.ConnectionInfo {
 
         try {
 
@@ -89,10 +88,14 @@ class TorControl(
                 val torProcId = conn.getInfo("process/pid")
 
                 torProcessId = torProcId.toInt()
-                val torConnInfo = TorConnectionInfo(torProcessId)
-                addEventHandler(conn, torEventHandler.also { it.torConnectionInfo = torConnInfo })
+                torInfo.connectionInfo.processId = torProcessId
 
-                return torConnInfo
+                TorEventHandler(torListener, torInfo.connectionInfo).let {
+                    torEventHandler = it
+                    addEventHandler(conn, it)
+                }
+
+                return torInfo.connectionInfo
 
             } else {
                 eventMonitor("Tor authentication cookie does not exist yet")
@@ -105,7 +108,7 @@ class TorControl(
             eventMonitor("Error configuring Tor connection: " + e.localizedMessage)
         }
 
-        return TorConnectionInfo(-1)
+        return Tor.ConnectionInfo(-1)
     }
 
     private fun getControlPort(): Int {
@@ -113,7 +116,7 @@ class TorControl(
 
         try {
             if (fileControlPort.exists()) {
-                eventMonitor("Reading control port config file: " + fileControlPort.getCanonicalPath())
+                eventMonitor("Reading control port config file: " + fileControlPort.canonicalPath)
                 val bufferedReader =
                         BufferedReader(FileReader(fileControlPort))
                 val line = bufferedReader.readLine()
@@ -126,7 +129,7 @@ class TorControl(
             } else {
                 eventMonitor(
                         "Control Port config file does not yet exist (waiting for tor): "
-                                + fileControlPort.getCanonicalPath()
+                                + fileControlPort.canonicalPath
                 )
             }
         } catch (e: FileNotFoundException) {
@@ -145,7 +148,7 @@ class TorControl(
 
         conn.let {
             it.setEventHandler(torEventHandler)
-            it.setEvents(Arrays.asList("ORCONN", "CIRC", "NOTICE", "WARN", "ERR", "BW"))
+            it.setEvents(listOf("ORCONN", "CIRC", "NOTICE", "WARN", "ERR", "BW"))
 
             eventMonitor("SUCCESS added control port event handler")
         }

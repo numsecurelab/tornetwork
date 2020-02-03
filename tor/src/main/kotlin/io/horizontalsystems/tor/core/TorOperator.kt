@@ -1,23 +1,22 @@
 package io.horizontalsystems.tor.core
 
 import com.jrummyapps.android.shell.Shell
-import io.horizontalsystems.tor.TorConnectionInfo
-import io.horizontalsystems.tor.TorEventHandler
-import io.horizontalsystems.tor.TorSettings
-import io.horizontalsystems.tor.TorStatus
+import io.horizontalsystems.tor.*
 import io.reactivex.Single
 import java.io.*
 import java.util.logging.Level
 import java.util.logging.Logger
 
-class TorOperator(private val torSettings: TorSettings) {
+class TorOperator(private val torSettings: Tor.Settings, private val torListener: Tor.Listener?) {
 
     private val logger = Logger.getLogger("TorOperator")
 
     lateinit var torControl: TorControl
     lateinit var resManager: TorResourceManager
+    private val torInfo = Tor.Info(Tor.ConnectionInfo())
 
-    fun start(): Single<TorStatus> {
+
+    fun start(): Single<Tor.Info> {
 
         try {
 
@@ -27,27 +26,34 @@ class TorOperator(private val torSettings: TorSettings) {
 
             if (success) {
 
-                eventMonitor(message = "Tor install success.")
-                eventMonitor(message = "Starting Tor... ")
+                torInfo.isInstalled = true
+                eventMonitor(torInfo = torInfo, message = "Tor install success.")
 
                 runTorShellCmd(resManager.fileTor, resManager.fileTorrcCustom)
+                eventMonitor(torInfo = torInfo, message = "Tor started successfully")
 
-                torControl = TorControl(resManager.fileTorControlPort, torSettings.appDataDir, TorEventHandler())
+                torControl = TorControl(resManager.fileTorControlPort, torSettings.appDataDir, torListener)
 
-                return torControl.initConnection(4)
+                return torControl.initConnection(4, torInfo)
                         .map { connInfo ->
-                            TorStatus(connInfo)
+                            Tor.Info(connInfo)
                         }
             }
 
         } catch (e: java.lang.Exception) {
+            torInfo.processId = -1
+            eventMonitor(torInfo = torInfo, message = "Error starting Tor")
             eventMonitor(message = e.message.toString())
         }
 
-        return Single.just(TorStatus(TorConnectionInfo(-1)))
+        return Single.just(Tor.Info(Tor.ConnectionInfo(-1)))
     }
 
-    private fun eventMonitor(logLevel: Level = Level.SEVERE, message: String) {
+    private fun eventMonitor(torInfo:Tor.Info? = null, logLevel: Level = Level.SEVERE, message: String) {
+        torListener?.let {
+            torListener.onProcessStatusUpdate(torInfo, message)
+        }
+
         logger.log(logLevel, message)
     }
 
@@ -92,7 +98,6 @@ class TorOperator(private val torSettings: TorSettings) {
                     "Error: " + shellResult.exitCode + " ERR=" + shellResult.getStderr() + " OUT=" + shellResult.getStdout()
             )
         }
-        eventMonitor(message = "\nResult\n:${shellResult}")
 
         return shellResult.exitCode
     }

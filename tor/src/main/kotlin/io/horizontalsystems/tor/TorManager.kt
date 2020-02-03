@@ -2,14 +2,12 @@ package io.horizontalsystems.tor
 
 import io.horizontalsystems.tor.core.TorOperator
 import io.reactivex.Single
-import java.util.logging.Logger
 
-class TorManager(torSettings: TorSettings) {
+class TorManager(torSettings: Tor.Settings, torListener: Tor.Listener) {
 
-    private val logger = Logger.getLogger("TorManager")
-    private val torOperator = TorOperator(torSettings)
+    private val torOperator = TorOperator(torSettings, torListener)
 
-    fun start(): Single<TorStatus> {
+    fun start(): Single<Tor.Info> {
         return torOperator.start()
     }
 }

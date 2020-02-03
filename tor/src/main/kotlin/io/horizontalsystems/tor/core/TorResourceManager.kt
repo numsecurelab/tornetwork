@@ -1,7 +1,7 @@
 package io.horizontalsystems.tor.core
 
 import android.util.Log
-import io.horizontalsystems.tor.TorSettings
+import io.horizontalsystems.tor.Tor
 import io.horizontalsystems.tor.core.utils.FileUtils
 import io.horizontalsystems.tor.core.utils.NativeLoader
 import io.horizontalsystems.tor.core.utils.NetworkUtils
@@ -10,7 +10,7 @@ import java.util.concurrent.TimeoutException
 import java.util.logging.Logger
 import java.util.zip.ZipInputStream
 
-class TorResourceManager(private val torSettings: TorSettings) {
+class TorResourceManager(private val torSettings: Tor.Settings) {
 
     private val logger = Logger.getLogger("TorResourceManager")
 

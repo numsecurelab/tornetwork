@@ -6,23 +6,20 @@ import android.provider.Settings
 import android.widget.ArrayAdapter
 import androidx.appcompat.app.AppCompatActivity
 import io.horizontalsystems.netkit.NetKit
-import io.horizontalsystems.netkit.network.NetworkRouterSettings
-import io.horizontalsystems.tor.TorEventHandler
-import io.horizontalsystems.tor.TorSettings
+import io.horizontalsystems.tor.Tor
 import io.reactivex.android.schedulers.AndroidSchedulers
 import io.reactivex.disposables.CompositeDisposable
 import kotlinx.android.synthetic.main.activity_main.*
 import java.io.InputStreamReader
-import java.net.HttpURLConnection
 import java.net.URL
 
 
-class MainActivity : AppCompatActivity() {
+class MainActivity : AppCompatActivity(), Tor.Listener {
 
-    val listItems = ArrayList<String>()
-    lateinit var adapter: ArrayAdapter<String>
+    private val listItems = ArrayList<String>()
+    private lateinit var adapter: ArrayAdapter<String>
     lateinit var netKit: NetKit
-    val disposables = CompositeDisposable()
+    private val disposables = CompositeDisposable()
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -36,7 +33,7 @@ class MainActivity : AppCompatActivity() {
             testTORConnection()
         }
 
-        adapter = ArrayAdapter<String>(
+        adapter = ArrayAdapter(
                 this,
                 android.R.layout.simple_list_item_1,
                 listItems
@@ -59,14 +56,14 @@ class MainActivity : AppCompatActivity() {
     }
 
     private fun startTORClient() {
-        netKit = NetKit(true, NetworkRouterSettings(context = applicationContext))
+        netKit = NetKit(false, true, Tor.Settings(context = applicationContext), this)
 
         disposables.add(
                 netKit.initNetworkRouter()
                         .observeOn(AndroidSchedulers.mainThread())
                         .subscribe(
-                                { torStatus ->
-                                    logEvent("TorStatus:${torStatus.processId}")
+                                { netStatus ->
+                                    logEvent("Tor Process ID:${netStatus.processId}")
                                 },
                                 { error ->
                                     logEvent("TorError:${error}")
@@ -75,12 +72,6 @@ class MainActivity : AppCompatActivity() {
 
     @SuppressLint("SetTextI18n")
     private fun testTORConnection() {
-        System.setProperty("https.proxyHost", "localhost")
-        System.setProperty("https.proxyPort", "8118")
-
-        Settings.Secure.getString(
-                contentResolver, "http_proxy"
-        )
 
         txTorTestStatus.text =
                 "Proxy Host:${System.getProperty("https.proxyHost")}," +
@@ -90,27 +81,26 @@ class MainActivity : AppCompatActivity() {
         // Last IP 185.220.101.29
     }
 
+    @SuppressLint("SetTextI18n")
     private fun getIP() {
 
         object : Thread() {
             override fun run() {
-                val url = URL("https://api.ipify.org")
-                val urlConnection: HttpURLConnection = url.openConnection() as HttpURLConnection
-
+                val urlConnection = netKit.getHttpConnection(URL("https://api.ipify.org"))
 
                 try {
-                    val inStream = urlConnection.getInputStream()
+                    val inStream = urlConnection.inputStream
                     val isw = InputStreamReader(inStream)
 
-                    var data: Int = isw.read();
-                    var output: String = ""
+                    var data: Int = isw.read()
+                    var output = ""
 
                     while (data != -1) {
                         val current = data.toChar()
-                        data = isw.read();
+                        data = isw.read()
                         output += current
                     }
-                    txTorTestStatus.text = "IP assigned :  ${output}"
+                    txTorTestStatus.text = "IP assigned :" + output
                 } catch (e: Exception) {
                     txTorTestStatus.text = e.toString()
                 } finally {
@@ -120,4 +110,17 @@ class MainActivity : AppCompatActivity() {
 
         }.start()
     }
+
+    override fun onProcessStatusUpdate(torInfo: Tor.Info?, message: String) {
+        runOnUiThread {
+            logEvent("Tor Status:${message}")
+        }
+    }
+
+    override fun onConnStatusUpdate(torConnInfo: Tor.ConnectionInfo?, message: String) {
+        runOnUiThread {
+            logEvent("Tor Connection Status:${message}")
+        }
+    }
+
 }
