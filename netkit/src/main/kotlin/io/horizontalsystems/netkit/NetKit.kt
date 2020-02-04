@@ -15,6 +15,22 @@ class NetKit(private var enableVPN: Boolean,
     private val connectionManager = ConnectionManager()
     lateinit var torInfo: Tor.Info
 
+    private var torVpnService: TorVpnService? = null
+    private var mBound: Boolean = false
+
+//    private val connection = object : ServiceConnection {
+//
+//        override fun onServiceConnected(className: ComponentName, service: IBinder) {
+//            val binder = service as TorVpnService.LocalBinder
+//            torVpnService = binder.getService()
+//            mBound = true
+//        }
+//
+//        override fun onServiceDisconnected(arg0: ComponentName) {
+//            mBound = false
+//        }
+//    }
+
     fun initNetworkRouter(): Single<Tor.Info> {
 
         if (enableTOR) {
@@ -37,5 +53,17 @@ class NetKit(private var enableVPN: Boolean,
                                                    enableTOR,
                                                    torInfo.connectionInfo.proxyHost,
                                                    torInfo.connectionInfo.proxyHttpPort.toInt())
+    }
+
+    fun startVpn() {
+//        Intent(routerSettings.context, TorVpnService::class.java).also { intent ->
+//            routerSettings.context.bindService(intent, connection, Context.BIND_AUTO_CREATE)
+//        }
+
+        TorVpnService.start(torSettings.context)
+    }
+
+    fun stopVpn() {
+        TorVpnService.stop(torSettings.context)
     }
 }
