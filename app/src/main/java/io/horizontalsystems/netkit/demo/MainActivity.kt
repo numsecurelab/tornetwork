@@ -1,6 +1,8 @@
 package io.horizontalsystems.netkit.demo
 
 import android.annotation.SuppressLint
+import android.content.Intent
+import android.net.VpnService
 import android.os.Bundle
 import android.provider.Settings
 import android.widget.ArrayAdapter
@@ -16,6 +18,7 @@ import java.net.URL
 
 class MainActivity : AppCompatActivity(), Tor.Listener {
 
+    private val REQUEST_VPN = 1
     private val listItems = ArrayList<String>()
     private lateinit var adapter: ArrayAdapter<String>
     lateinit var netKit: NetKit
@@ -33,13 +36,37 @@ class MainActivity : AppCompatActivity(), Tor.Listener {
             testTORConnection()
         }
 
-        adapter = ArrayAdapter(
-                this,
-                android.R.layout.simple_list_item_1,
-                listItems
-        )
+        btnStartVpn.setOnClickListener {
+            if (netKit != null) {
+                val intent = VpnService.prepare(applicationContext)
+                if (intent != null) {
+                    startActivityForResult(intent, REQUEST_VPN)
+                } else {
+                    onActivityResult(REQUEST_VPN, RESULT_OK, null)
+                }
+            }
+        }
+
+        btnStopVpn.setOnClickListener {
+            btnStopVpn.text = "VPN stopped"
+            netKit.stopVpn()
+        }
+
+
+        adapter = ArrayAdapter(this, android.R.layout.simple_list_item_1, listItems)
 
         statusView.adapter = adapter
+    }
+
+    override fun onActivityResult(requestCode: Int, resultCode: Int, data: Intent?) {
+        super.onActivityResult(requestCode, resultCode, data)
+        if (resultCode != RESULT_OK) {
+            return
+        }
+        if (requestCode == REQUEST_VPN) {
+            btnStartVpn.text = "VPN started"
+            netKit.startVpn()
+        }
     }
 
     override fun onDestroy() {
