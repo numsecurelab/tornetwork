@@ -7,6 +7,20 @@ import java.io.File
 
 object Tor {
 
+    enum class State(val processId: Int) {
+        STARTING(-1),
+        RUNNING(1),
+        STOPPED(0);
+
+        companion object {
+
+            fun getByProcessId(procId: Int): State {
+                return State.values()
+                        .find { it.processId == procId } ?: State.RUNNING
+            }
+        }
+    }
+
     enum class ConnectionStatus {
 
         UNDEFINED,
@@ -35,6 +49,12 @@ object Tor {
             }
 
         var isInstalled: Boolean = false
+
+        var state: State
+            get() = State.getByProcessId(processId)
+            set(value) {
+                processId = value.processId
+            }
 
         val isStarted: Boolean
             get() = connectionInfo.processId > 0

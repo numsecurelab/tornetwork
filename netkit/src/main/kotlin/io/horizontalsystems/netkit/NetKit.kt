@@ -18,7 +18,7 @@ class NetKit(private var enableVPN: Boolean,
     fun initNetworkRouter(): Single<Tor.Info> {
 
         if (enableTOR) {
-            val torManager = TorManager(torSettings, torListener)
+            val torManager = TorManager(false, torSettings, torListener)
 
             return torManager.start().map {
                 torInfo = it

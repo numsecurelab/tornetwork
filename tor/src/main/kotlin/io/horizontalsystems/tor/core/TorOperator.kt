@@ -32,6 +32,11 @@ class TorOperator(private val torSettings: Tor.Settings, private val torListener
                 runTorShellCmd(resManager.fileTor, resManager.fileTorrcCustom)
                 eventMonitor(torInfo = torInfo, message = "Tor started successfully")
 
+                // Wait for control file creation -> Replace this implementation with RX.
+                //-----------------------------
+                Thread.sleep(100)
+                //-----------------------------
+
                 torControl = TorControl(resManager.fileTorControlPort, torSettings.appDataDir, torListener)
 
                 return torControl.initConnection(4, torInfo)
@@ -49,7 +54,15 @@ class TorOperator(private val torSettings: Tor.Settings, private val torListener
         return Single.just(Tor.Info(Tor.ConnectionInfo(-1)))
     }
 
-    private fun eventMonitor(torInfo:Tor.Info? = null, logLevel: Level = Level.SEVERE, message: String) {
+    fun stop(): Single<Boolean> {
+        return Single.just(true)
+    }
+
+    fun newIdentity(): Boolean {
+        return torControl.newIdentity()
+    }
+
+    private fun eventMonitor(torInfo: Tor.Info? = null, logLevel: Level = Level.SEVERE, message: String) {
         torListener?.let {
             torListener.onProcessStatusUpdate(torInfo, message)
         }

@@ -68,6 +68,12 @@ class TorControl(
                     eventMonitor("Error connecting to Tor local control port: " + e.localizedMessage)
                     emitter.tryOnError(e)
                 }
+
+
+                // Wait for control file creation -> Replace this implementation with RX.
+                //-----------------------------
+                Thread.sleep(100)
+                //-----------------------------
             }
         }
     }
@@ -109,6 +115,38 @@ class TorControl(
         }
 
         return Tor.ConnectionInfo(-1)
+    }
+
+    fun newIdentity(): Boolean {
+        return try {
+            controlConn?.signal("NEWNYM")
+            true
+        } catch (e: IOException) {
+            false
+        }
+    }
+
+    @Synchronized
+    fun isBootstrapped(): Boolean {
+
+        controlConn?.let {
+
+            try {
+                var phase: String? = null
+
+                phase = it.getInfo("status/bootstrap-phase")
+
+                if (phase != null && phase.contains("PROGRESS=100")) {
+                    eventMonitor("Tor has already bootstrapped")
+                    return true
+                }
+
+            } catch (e: IOException) {
+                eventMonitor("Control connection is not responding properly to getInfo:" + e)
+            }
+        }
+
+        return false
     }
 
     private fun getControlPort(): Int {
