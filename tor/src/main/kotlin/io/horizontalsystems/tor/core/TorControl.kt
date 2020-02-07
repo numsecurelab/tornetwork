@@ -1,5 +1,6 @@
 package io.horizontalsystems.tor.core
 
+import io.horizontalsystems.tor.ConnectionStatus
 import io.horizontalsystems.tor.Tor
 import io.reactivex.Single
 import io.reactivex.schedulers.Schedulers
@@ -96,6 +97,7 @@ class TorControl(
                 torProcessId = torProcId.toInt()
                 torInfo.connectionInfo.processId = torProcessId
 
+                torInfo.connectionInfo.connectionStatus = ConnectionStatus.CONNECTING
                 TorEventHandler(torListener, torInfo.connectionInfo).let {
                     torEventHandler = it
                     addEventHandler(conn, it)

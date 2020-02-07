@@ -2,17 +2,20 @@ package io.horizontalsystems.netkit.demo
 
 import android.annotation.SuppressLint
 import android.content.Intent
+import android.graphics.Color
 import android.net.VpnService
 import android.os.Bundle
-import android.provider.Settings
 import android.widget.ArrayAdapter
 import androidx.appcompat.app.AppCompatActivity
 import io.horizontalsystems.netkit.NetKit
 import io.horizontalsystems.tor.Tor
+import io.horizontalsystems.tor.vpn.Vpn
 import io.reactivex.android.schedulers.AndroidSchedulers
 import io.reactivex.disposables.CompositeDisposable
 import kotlinx.android.synthetic.main.activity_main.*
 import java.io.InputStreamReader
+import java.io.ObjectInputStream
+import java.io.ObjectOutputStream
 import java.net.URL
 
 
@@ -21,35 +24,39 @@ class MainActivity : AppCompatActivity(), Tor.Listener {
     private val REQUEST_VPN = 1
     private val listItems = ArrayList<String>()
     private lateinit var adapter: ArrayAdapter<String>
-    lateinit var netKit: NetKit
     private val disposables = CompositeDisposable()
+    private var vpnStarted: Boolean = false
+
+    val netKit = NetKit(this)
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         setContentView(R.layout.activity_main)
 
+
         btnTor.setOnClickListener {
             startTORClient()
         }
 
-        btnTorTest.setOnClickListener {
-            testTORConnection()
-        }
+        btnVpn.setOnClickListener {
 
-        btnStartVpn.setOnClickListener {
-            if (netKit != null) {
-                val intent = VpnService.prepare(applicationContext)
-                if (intent != null) {
-                    startActivityForResult(intent, REQUEST_VPN)
-                } else {
-                    onActivityResult(REQUEST_VPN, RESULT_OK, null)
-                }
+            if(vpnStarted){
+                vpnStarted = false
+                btnVpn.text = "Start Vpn"
+                btnVpn.setBackgroundColor(Color.GRAY)
+            }
+            else{
+                startVPN()
+                netKit.startVpn(Vpn.Settings(context = applicationContext))
+                vpnStarted = true
+                btnVpn.text = "Stop Vpn"
+                btnVpn.setBackgroundColor(Color.CYAN)
             }
         }
 
-        btnStopVpn.setOnClickListener {
-            btnStopVpn.text = "VPN stopped"
-            netKit.stopVpn()
+
+        btnTorTest.setOnClickListener {
+            testTORConnection()
         }
 
 
@@ -58,14 +65,24 @@ class MainActivity : AppCompatActivity(), Tor.Listener {
         statusView.adapter = adapter
     }
 
+    private fun startVPN(){
+
+        val intent = VpnService.prepare(this)
+        if (intent != null) {
+            startActivityForResult(intent, 1)
+        } else {
+            onActivityResult(REQUEST_VPN, AppCompatActivity.RESULT_OK, null)
+        }
+    }
+
     override fun onActivityResult(requestCode: Int, resultCode: Int, data: Intent?) {
         super.onActivityResult(requestCode, resultCode, data)
+
         if (resultCode != RESULT_OK) {
             return
         }
         if (requestCode == REQUEST_VPN) {
-            btnStartVpn.text = "VPN started"
-            netKit.startVpn()
+
         }
     }
 
@@ -83,10 +100,10 @@ class MainActivity : AppCompatActivity(), Tor.Listener {
     }
 
     private fun startTORClient() {
-        netKit = NetKit(false, true, Tor.Settings(context = applicationContext), this)
 
+        startVPN()
         disposables.add(
-                netKit.initNetworkRouter()
+                netKit.startTor(Tor.Settings(context = applicationContext, vpnMode = false, useBridges = false))
                         .observeOn(AndroidSchedulers.mainThread())
                         .subscribe(
                                 { netStatus ->
@@ -100,9 +117,8 @@ class MainActivity : AppCompatActivity(), Tor.Listener {
     @SuppressLint("SetTextI18n")
     private fun testTORConnection() {
 
-        txTorTestStatus.text =
-                "Proxy Host:${System.getProperty("https.proxyHost")}," +
-                        "Proxy Port:${Settings.Global.HTTP_PROXY}"
+        txTorTestStatus.text = "Getting IP Address ... "
+        txTorTestStatus2.text = "Checking socket connection ... "
 
         getIP()
         // Last IP 185.220.101.29
@@ -128,11 +144,40 @@ class MainActivity : AppCompatActivity(), Tor.Listener {
                         output += current
                     }
                     txTorTestStatus.text = "IP assigned :" + output
+
                 } catch (e: Exception) {
                     txTorTestStatus.text = e.toString()
                 } finally {
                     urlConnection.disconnect()
                 }
+
+
+                //--------Socket Conn ----------------------------------
+                try {
+                    var socket = netKit.getSocketConnection("wss://echo.websocket.org",0)
+                    var oos: ObjectOutputStream? = null
+                    var ois: ObjectInputStream? = null
+
+                    oos = ObjectOutputStream(socket.getOutputStream())
+                    println("Sending request to Socket Server")
+                    oos.writeObject("Data Sent");
+
+                    ois = ObjectInputStream(socket.getInputStream())
+                    var message = ois.readObject() as String
+                    txTorTestStatus2.text = "Message: $message"
+                    oos.writeObject("exit")
+                    ois = ObjectInputStream(socket.getInputStream())
+                    message = ois.readObject() as String
+                    txTorTestStatus2.text = "Message: $message"
+
+                    ois.close()
+                    oos.close()
+                } catch (e: Exception) {
+                    txTorTestStatus2.text = e.toString()
+                } finally {
+                }
+
+                //------------------------------------------------------
             }
 
         }.start()

@@ -10,21 +10,31 @@ interface TorConstants {
         const val LIB_NAME = "tor"
         const val LIB_SO_NAME = "tor.so"
 
+        //geoip data file asset key
+        const val GEOIP_ASSET_KEY = "geoip"
+        const val GEOIP6_ASSET_KEY = "geoip6"
+
         //torrc (tor config file)
         const val TOR_ASSET_KEY = "tor"
         const val TORRC_ASSET_KEY = "torrc"
         const val COMMON_ASSET_KEY = "common/"
         const val TOR_CONTROL_COOKIE = "control_auth_cookie"
-        //geoip data file asset key
-        const val GEOIP_ASSET_KEY = "geoip"
-        const val GEOIP6_ASSET_KEY = "geoip6"
         const val IP_LOCALHOST = "127.0.0.1"
-        const val TOR_TRANSPROXY_PORT_DEFAULT = 9040
-        const val TOR_DNS_PORT_DEFAULT = 5400
+        const val TOR_TRANSPROXY_PORT_DEFAULT = "9040"
+        const val TOR_DNS_PORT_DEFAULT = "5400"
         const val HTTP_PROXY_PORT_DEFAULT = "8118" // like Privoxy!
         const val SOCKS_PROXY_PORT_DEFAULT = "9050"
 
         var FILE_WRITE_BUFFER_SIZE = 1024
         var BINARY_TOR_VERSION = "0.4.1.6-openssl1.0.2p"
+
+        fun getIntValue(value: String):Int {
+            try{
+                return value.toInt()
+            }
+            catch (e: Exception){
+                return -1
+            }
+        }
     }
 }

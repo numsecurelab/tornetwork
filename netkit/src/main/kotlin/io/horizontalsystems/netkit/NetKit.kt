@@ -3,67 +3,48 @@ package io.horizontalsystems.netkit
 import io.horizontalsystems.netkit.network.ConnectionManager
 import io.horizontalsystems.tor.Tor
 import io.horizontalsystems.tor.TorManager
+import io.horizontalsystems.tor.vpn.Vpn
+import io.horizontalsystems.tor.vpn.service.TorVpnService
 import io.reactivex.Single
 import java.net.HttpURLConnection
+import java.net.Socket
 import java.net.URL
 
-class NetKit(private var enableVPN: Boolean,
-             private var enableTOR: Boolean,
-             private val torSettings: Tor.Settings,
-             private val torListener: Tor.Listener) {
+class NetKit(private val torListener: Tor.Listener) {
 
     private val connectionManager = ConnectionManager()
     lateinit var torInfo: Tor.Info
 
-    private var torVpnService: TorVpnService? = null
-    private var mBound: Boolean = false
+    fun startTor(torSettings: Tor.Settings): Single<Tor.Info> {
 
-//    private val connection = object : ServiceConnection {
-//
-//        override fun onServiceConnected(className: ComponentName, service: IBinder) {
-//            val binder = service as TorVpnService.LocalBinder
-//            torVpnService = binder.getService()
-//            mBound = true
-//        }
-//
-//        override fun onServiceDisconnected(arg0: ComponentName) {
-//            mBound = false
-//        }
-//    }
+        val torManager = TorManager(false, torSettings, torListener)
 
-    fun initNetworkRouter(): Single<Tor.Info> {
+        return torManager.start()
+    }
 
-        if (enableTOR) {
-            val torManager = TorManager(false, torSettings, torListener)
+    fun startVpn(vpnSettings: Vpn.Settings): Vpn.Info {
 
-            return torManager.start().map {
-                torInfo = it
-                it
-            }
-        } else {
-            torInfo = Tor.Info(Tor.ConnectionInfo(-1))
-        }
+        TorVpnService.start(vpnSettings)
 
-        return Single.just(torInfo)
+        return Vpn.Info(Vpn.ConnectionInfo())
+    }
+
+    fun stopVpn(): Boolean {
+        return true
+    }
+
+    fun getSocketConnection(host: String, port: Int): Socket {
+        return connectionManager.getSocketConnection(host,port)
     }
 
     fun getHttpConnection(url: URL): HttpURLConnection {
 
-        return connectionManager.httpURLConnection(url,
-                                                   enableTOR,
-                                                   torInfo.connectionInfo.proxyHost,
-                                                   torInfo.connectionInfo.proxyHttpPort.toInt())
-    }
+//        return connectionManager.httpURLConnection(url,
+//                                                   enableTOR.let { if(!it) false else !enableVPN },
+//                                                   torInfo.connectionInfo.proxyHost,
+//                                                   torInfo.connectionInfo.proxyHttpPort.toInt())
 
-    fun startVpn() {
-//        Intent(routerSettings.context, TorVpnService::class.java).also { intent ->
-//            routerSettings.context.bindService(intent, connection, Context.BIND_AUTO_CREATE)
-//        }
+        return connectionManager.httpURLConnection(url, false)
 
-        TorVpnService.start(torSettings.context)
-    }
-
-    fun stopVpn() {
-        TorVpnService.stop(torSettings.context)
     }
 }

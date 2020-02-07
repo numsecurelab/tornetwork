@@ -5,40 +5,38 @@ import android.content.Context
 import io.horizontalsystems.tor.core.TorConstants
 import java.io.File
 
+enum class EntityState(val processId: Int) {
+    STARTING(-1),
+    RUNNING(1),
+    STOPPED(0);
+
+    companion object {
+
+        fun getByProcessId(procId: Int): EntityState {
+            return values()
+                .find { it.processId == procId } ?: EntityState.RUNNING
+        }
+    }
+}
+
+enum class ConnectionStatus {
+
+    CLOSED,
+    CONNECTING,
+    CONNECTED,
+    FAILED;
+
+    companion object {
+
+        fun getByName(typName: String): ConnectionStatus {
+            return values()
+                .find { it.name.contentEquals(typName.toUpperCase()) } ?: CLOSED
+        }
+    }
+}
+
 object Tor {
 
-    enum class State(val processId: Int) {
-        STARTING(-1),
-        RUNNING(1),
-        STOPPED(0);
-
-        companion object {
-
-            fun getByProcessId(procId: Int): State {
-                return State.values()
-                        .find { it.processId == procId } ?: State.RUNNING
-            }
-        }
-    }
-
-    enum class ConnectionStatus {
-
-        UNDEFINED,
-        EXTENDET,
-        LAUNCHED,
-        BUILT,
-        FAILED,
-        CONNECTED,
-        CLOSED;
-
-        companion object {
-
-            fun getByName(typName: String): ConnectionStatus {
-                return ConnectionStatus.values()
-                        .find { it.name.contentEquals(typName.toUpperCase()) } ?: UNDEFINED
-            }
-        }
-    }
 
     class Info(val connectionInfo: ConnectionInfo) {
 
@@ -50,8 +48,8 @@ object Tor {
 
         var isInstalled: Boolean = false
 
-        var state: State
-            get() = State.getByProcessId(processId)
+        var state: EntityState
+            get() = EntityState.getByProcessId(processId)
             set(value) {
                 processId = value.processId
             }
@@ -68,19 +66,25 @@ object Tor {
         var proxyHttpPort = TorConstants.HTTP_PROXY_PORT_DEFAULT
         val isConnected: Boolean
             get() = connectionStatus == ConnectionStatus.CONNECTED
+        var isBootstrapped: Boolean = false
 
-        var connectionStatus = ConnectionStatus.UNDEFINED
-        var circuitStatus = ConnectionStatus.UNDEFINED
-        var circuitId: String? = null
+        var connectionStatus = ConnectionStatus.CLOSED
     }
 
-    class Settings(val context: Context) {
+    class Settings(var context: Context) {
+
+        constructor(context: Context, vpnMode: Boolean, useBridges: Boolean) : this(context) {
+            this.context = context
+            this.vpnMode = vpnMode
+            this.useBridges = useBridges
+        }
 
         var appFilesDir: File
         var appDataDir: File
         var appNativeDir: File
         var appSourceDir: File
 
+        var vpnMode: Boolean = false
         var useBridges: Boolean = false
 
         init {

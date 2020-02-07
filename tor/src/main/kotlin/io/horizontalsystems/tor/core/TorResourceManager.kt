@@ -2,9 +2,9 @@ package io.horizontalsystems.tor.core
 
 import android.util.Log
 import io.horizontalsystems.tor.Tor
-import io.horizontalsystems.tor.core.utils.FileUtils
-import io.horizontalsystems.tor.core.utils.NativeLoader
-import io.horizontalsystems.tor.core.utils.NetworkUtils
+import io.horizontalsystems.tor.utils.FileUtils
+import io.horizontalsystems.tor.utils.NativeLoader
+import io.horizontalsystems.tor.utils.NetworkUtils
 import java.io.*
 import java.util.concurrent.TimeoutException
 import java.util.logging.Logger
@@ -91,15 +91,26 @@ class TorResourceManager(private val torSettings: Tor.Settings) {
         extraLines.append("\n")
         extraLines.append("RunAsDaemon 1").append('\n')
         extraLines.append("AvoidDiskWrites 1").append('\n')
-        extraLines.append("ControlPortWriteToFile ").append(fileTorControlPort.absolutePath).append('\n')
+        extraLines.append("ControlPortWriteToFile ")
+            .append(fileTorControlPort.absolutePath).append('\n')
         extraLines.append("ControlPort Auto").append('\n')
-        extraLines.append("SOCKSPort 9050").append('\n')
+        extraLines.append("SOCKSPort ").append(checkPortOrAuto(
+            TorConstants.SOCKS_PROXY_PORT_DEFAULT)).append('\n')
+        extraLines.append("SocksListenAddress 0.0.0.0").append('\n')
+        extraLines.append("ReducedConnectionPadding 1").append('\n')
+        extraLines.append("ReducedCircuitPadding 1").append('\n')
+        extraLines.append("SafeSocks 0").append('\n')
+        extraLines.append("TestSocks 0").append('\n')
         extraLines.append("HTTPTunnelPort ").append(checkPortOrAuto(
                 TorConstants.HTTP_PROXY_PORT_DEFAULT)).append('\n')
+        extraLines.append("TransPort ").append(checkPortOrAuto(
+            TorConstants.TOR_TRANSPROXY_PORT_DEFAULT)).append('\n')
         extraLines.append("DNSPort ").append(checkPortOrAuto(
-                TorConstants.TOR_DNS_PORT_DEFAULT.toString())).append('\n')
-        extraLines.append("TransPort 0").append('\n')
+                TorConstants.TOR_DNS_PORT_DEFAULT)).append('\n')
         extraLines.append("CookieAuthentication 1").append('\n')
+        extraLines.append("VirtualAddrNetwork 10.192.0.0/10").append('\n')
+        extraLines.append("AutomapHostsOnResolve 1").append('\n')
+
         extraLines.append("DisableNetwork 0").append('\n')
 
         val fileTorRcCustom = File(fileTorrc.getAbsolutePath() + ".custom")
