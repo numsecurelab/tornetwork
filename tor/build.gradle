@@ -43,12 +43,7 @@ dependencies {
     implementation "org.jetbrains.kotlin:kotlin-stdlib-jdk7:$kotlin_version"
     implementation 'androidx.appcompat:appcompat:1.1.0-alpha04'
 
-    //implementation 'org.torproject:tor-android-binary:0.4.1.6-dev'
-    implementation 'info.pluggabletransports.aptds:apt-dispatch-library:1.0.7'
-    implementation 'info.pluggabletransports.aptds:apt-meek-obfs4-legacy:1.0.7'
-    implementation 'info.pluggabletransports.aptds:jsocksAndroid:1.0.4'
-
-    //implementation 'org.torproject:tor-android-binary:0.4.1.6'
+    api 'info.pluggabletransports.aptds:apt-meek-obfs4-legacy:1.0.7'
     api 'org.briarproject:jtorctl:0.3'
     api 'com.jaredrummler:android-shell:1.0.0'
     api 'com.offbynull.portmapper:portmapper:2.0.5'
