@@ -1,6 +1,6 @@
 package io.horizontalsystems.tor.utils
 
-import io.horizontalsystems.tor.vpn.VpnConstants
+import io.horizontalsystems.tor.core.TorConstants
 import java.io.BufferedReader
 import java.io.File
 import java.io.IOException
@@ -19,7 +19,7 @@ object ProcessUtils {
 
     @Throws(IOException::class)
     fun findProcessId(command: String?): Int {
-        val procPs: Process = Runtime.getRuntime().exec(VpnConstants.SHELL_CMD_PS)
+        val procPs: Process = Runtime.getRuntime().exec(TorConstants.SHELL_CMD_PS)
         val reader = BufferedReader(InputStreamReader(procPs.inputStream))
         var line: String
         while (reader.readLine().also { line = it } != null) {

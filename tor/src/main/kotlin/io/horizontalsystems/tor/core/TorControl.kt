@@ -2,6 +2,8 @@ package io.horizontalsystems.tor.core
 
 import io.horizontalsystems.tor.ConnectionStatus
 import io.horizontalsystems.tor.Tor
+import io.reactivex.Flowable
+import io.reactivex.Observable
 import io.reactivex.Single
 import io.reactivex.schedulers.Schedulers
 import net.freehaven.tor.control.TorControlConnection
@@ -13,7 +15,8 @@ import java.util.logging.Logger
 class TorControl(
         private val fileControlPort: File,
         private val appCacheHome: File,
-        private val torListener: Tor.Listener?) {
+        private val torInternalListener: Tor.Listener?,
+        private val torMainListener: Tor.Listener?) {
 
     private val logger = Logger.getLogger("TorControl")
 
@@ -29,7 +32,7 @@ class TorControl(
         }
     }
 
-    fun initConnection(maxTries: Int, torInfo: Tor.Info): Single<Tor.ConnectionInfo> {
+    fun initConnection(maxTries: Int, torInfo: Tor.Info): Observable<Tor.ConnectionInfo> {
 
         return createControlConn(maxTries)
                 .subscribeOn(Schedulers.io())
@@ -40,9 +43,9 @@ class TorControl(
                 }
     }
 
-    private fun createControlConn(maxTries: Int): Single<TorControlConnection> {
+    private fun createControlConn(maxTries: Int): Observable<TorControlConnection> {
 
-        return Single.create { emitter ->
+        return Observable.create{ emitter ->
             var attempt = 0
 
             while (controlConn == null && attempt++ < maxTries) {
@@ -62,7 +65,7 @@ class TorControl(
                         controlConn = conn
 
                         eventMonitor("SUCCESS connected to Tor control port.")
-                        emitter.onSuccess(conn)
+                        emitter.onNext(conn)
                     }
                 } catch (e: Exception) {
                     controlConn = null
@@ -97,8 +100,8 @@ class TorControl(
                 torProcessId = torProcId.toInt()
                 torInfo.connectionInfo.processId = torProcessId
 
-                torInfo.connectionInfo.connectionStatus = ConnectionStatus.CONNECTING
-                TorEventHandler(torListener, torInfo.connectionInfo).let {
+                torInfo.connectionInfo.circuitStatus = ConnectionStatus.CONNECTING
+                TorEventHandler(torInternalListener, torMainListener, torInfo.connectionInfo).let {
                     torEventHandler = it
                     addEventHandler(conn, it)
                 }

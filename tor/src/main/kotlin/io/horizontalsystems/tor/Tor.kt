@@ -14,7 +14,7 @@ enum class EntityState(val processId: Int) {
 
         fun getByProcessId(procId: Int): EntityState {
             return values()
-                .find { it.processId == procId } ?: EntityState.RUNNING
+                    .find { it.processId == procId } ?: RUNNING
         }
     }
 }
@@ -30,7 +30,7 @@ enum class ConnectionStatus {
 
         fun getByName(typName: String): ConnectionStatus {
             return values()
-                .find { it.name.contentEquals(typName.toUpperCase()) } ?: CLOSED
+                    .find { it.name.contentEquals(typName.toUpperCase()) } ?: CLOSED
         }
     }
 }
@@ -64,12 +64,25 @@ object Tor {
         var proxyHost = TorConstants.IP_LOCALHOST
         var proxySocksPort = TorConstants.SOCKS_PROXY_PORT_DEFAULT
         var proxyHttpPort = TorConstants.HTTP_PROXY_PORT_DEFAULT
-        val isConnected: Boolean
-            get() = connectionStatus == ConnectionStatus.CONNECTED
         var isBootstrapped: Boolean = false
+        var circuitStatus = ConnectionStatus.CLOSED
 
-        var connectionStatus = ConnectionStatus.CLOSED
+        fun getConnectionStatus(): ConnectionStatus {
+
+            if (circuitStatus == ConnectionStatus.CONNECTED && isBootstrapped)
+                return ConnectionStatus.CONNECTED
+            else {
+
+                if (circuitStatus == ConnectionStatus.CONNECTING)
+                    return ConnectionStatus.CONNECTING
+                else
+                    return ConnectionStatus.CLOSED
+            }
+        }
+
+
     }
+
 
     class Settings(var context: Context) {
 
@@ -96,7 +109,7 @@ object Tor {
     }
 
     interface Listener {
-        fun onProcessStatusUpdate(torInfo: Info?, message: String)
-        fun onConnStatusUpdate(torConnInfo: ConnectionInfo?, message: String)
+        fun onProcessStatusUpdate(torInfo: Tor.Info?, message: String)
+        fun onConnStatusUpdate(torConnInfo: Tor.ConnectionInfo?, message: String)
     }
 }

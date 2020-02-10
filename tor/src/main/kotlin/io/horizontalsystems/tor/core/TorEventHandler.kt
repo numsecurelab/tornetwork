@@ -6,8 +6,10 @@ import io.horizontalsystems.tor.Tor
 import net.freehaven.tor.control.EventHandler
 import java.util.logging.Logger
 
-open class TorEventHandler(private val torListener: Tor.Listener?,
-                           private val connInfo: Tor.ConnectionInfo)
+open class TorEventHandler(
+        private val torInternalListener: Tor.Listener?,
+        private val torMainListener: Tor.Listener?,
+        private val connInfo: Tor.ConnectionInfo)
     : EventHandler {
 
     private val logger = Logger.getLogger("TorEventHandler")
@@ -31,12 +33,19 @@ open class TorEventHandler(private val torListener: Tor.Listener?,
 
         status?.let {
 
-            if(connInfo.connectionStatus == ConnectionStatus.CONNECTING &&
-                TextUtils.equals(status, "BUILT")){
-                connInfo.connectionStatus = ConnectionStatus.CONNECTED
+            if(TextUtils.equals(status, "BUILT")) {
+                if (connInfo.circuitStatus == ConnectionStatus.CONNECTING)
+                    connInfo.circuitStatus = ConnectionStatus.CONNECTED
+            } else if(TextUtils.equals(status, "CLOSED")){
+                connInfo.circuitStatus = ConnectionStatus.CLOSED
             }
+            else{
+                connInfo.circuitStatus = ConnectionStatus.CONNECTING
+            }
+
         }
-        torListener?.onConnStatusUpdate(connInfo, "ConnectionStatus: ${status}")
+        torInternalListener?.onConnStatusUpdate(connInfo, "ConnectionStatus: ${status}")
+        torMainListener?.onConnStatusUpdate(connInfo, "ConnectionStatus: ${status}")
     }
 
     override fun message(severity: String?, msg: String?) {
@@ -44,12 +53,13 @@ open class TorEventHandler(private val torListener: Tor.Listener?,
 
         msg?.let {
 
-            if(msg.contains("100")){
+            if (msg.contains("100")) {
                 connInfo.isBootstrapped = true
             }
 
             logger.info(logMessage)
-            torListener?.onConnStatusUpdate(connInfo, logMessage)
+            torInternalListener?.onConnStatusUpdate(connInfo, logMessage)
+            torMainListener?.onConnStatusUpdate(connInfo, logMessage)
         }
     }
 }

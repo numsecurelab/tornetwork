@@ -13,15 +13,14 @@ import io.horizontalsystems.tor.R
 class NotificationUtils {
 
     companion object {
-
         fun getNotification(context: Context, pendingIntent: PendingIntent, title: String, description: String, channelId: String): Notification {
 
             createNotificationChannel(context, title, channelId)
 
             val mBuilder = NotificationCompat.Builder(context, channelId)
-                .setSmallIcon(R.drawable.ic_stat_tor)
-                .setContentTitle(title)
-                .setContentText(description)
+                    .setSmallIcon(R.drawable.ic_tor)
+                    .setContentTitle(title)
+                    .setContentText(description)
 
             mBuilder.setContentIntent(pendingIntent)
 

@@ -1,15 +1,11 @@
 package io.horizontalsystems.netkit.demo
 
 import android.annotation.SuppressLint
-import android.content.Intent
-import android.graphics.Color
-import android.net.VpnService
 import android.os.Bundle
 import android.widget.ArrayAdapter
 import androidx.appcompat.app.AppCompatActivity
 import io.horizontalsystems.netkit.NetKit
 import io.horizontalsystems.tor.Tor
-import io.horizontalsystems.tor.vpn.Vpn
 import io.reactivex.android.schedulers.AndroidSchedulers
 import io.reactivex.disposables.CompositeDisposable
 import kotlinx.android.synthetic.main.activity_main.*
@@ -21,69 +17,36 @@ import java.net.URL
 
 class MainActivity : AppCompatActivity(), Tor.Listener {
 
-    private val REQUEST_VPN = 1
     private val listItems = ArrayList<String>()
     private lateinit var adapter: ArrayAdapter<String>
     private val disposables = CompositeDisposable()
-    private var vpnStarted: Boolean = false
+    private var torStarted: Boolean = false
 
     val netKit = NetKit(this)
 
+    @SuppressLint("SetTextI18n")
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         setContentView(R.layout.activity_main)
 
 
         btnTor.setOnClickListener {
-            startTORClient()
-        }
-
-        btnVpn.setOnClickListener {
-
-            if(vpnStarted){
-                vpnStarted = false
-                btnVpn.text = "Start Vpn"
-                btnVpn.setBackgroundColor(Color.GRAY)
+            if(!torStarted) {
+                startTor()
+                btnTor.text = "Stop Vpn"
             }
             else{
-                startVPN()
-                netKit.startVpn(Vpn.Settings(context = applicationContext))
-                vpnStarted = true
-                btnVpn.text = "Stop Vpn"
-                btnVpn.setBackgroundColor(Color.CYAN)
+                stopTor()
+                btnTor.text = "Start Vpn"
             }
         }
-
 
         btnTorTest.setOnClickListener {
             testTORConnection()
         }
 
-
         adapter = ArrayAdapter(this, android.R.layout.simple_list_item_1, listItems)
-
         statusView.adapter = adapter
-    }
-
-    private fun startVPN(){
-
-        val intent = VpnService.prepare(this)
-        if (intent != null) {
-            startActivityForResult(intent, 1)
-        } else {
-            onActivityResult(REQUEST_VPN, AppCompatActivity.RESULT_OK, null)
-        }
-    }
-
-    override fun onActivityResult(requestCode: Int, resultCode: Int, data: Intent?) {
-        super.onActivityResult(requestCode, resultCode, data)
-
-        if (resultCode != RESULT_OK) {
-            return
-        }
-        if (requestCode == REQUEST_VPN) {
-
-        }
     }
 
     override fun onDestroy() {
@@ -99,9 +62,13 @@ class MainActivity : AppCompatActivity(), Tor.Listener {
         }
     }
 
-    private fun startTORClient() {
+    private fun stopTor() {
 
-        startVPN()
+    }
+
+
+    private fun startTor() {
+
         disposables.add(
                 netKit.startTor(Tor.Settings(context = applicationContext, vpnMode = false, useBridges = false))
                         .observeOn(AndroidSchedulers.mainThread())
@@ -154,7 +121,7 @@ class MainActivity : AppCompatActivity(), Tor.Listener {
 
                 //--------Socket Conn ----------------------------------
                 try {
-                    var socket = netKit.getSocketConnection("wss://echo.websocket.org",0)
+                    val socket = netKit.getSocketConnection("api.ipify.org",443)
                     var oos: ObjectOutputStream? = null
                     var ois: ObjectInputStream? = null
 

@@ -5,8 +5,19 @@ import java.io.DataOutputStream
 import java.io.IOException
 import java.net.*
 
+enum class ProxyEnvVar(val value: String) {
+
+    USE_SYSTEM_PROXIES("java.net.useSystemProxies"),
+    HTTP_PROXY_HOST("http.proxyHost"),
+    HTTP_PROXY_PORT("http.proxyPOrt"),
+    HTTPS_PROXY_HOST("https.proxyHost"),
+    HTTPS_PROXY_PORT("https.proxyPort"),
+    SOCKS_PROXY_HOST("socksProxyHost"),
+    SOCKS_PROXY_PORT("socksProxyPort");
+}
 
 class ConnectionManager {
+
 
     private val READ_TIMEOUT_MILLISECONDS = 60000
     private val CONNECT_TIMEOUT_MILLISECONDS = 60000
@@ -14,6 +25,7 @@ class ConnectionManager {
     fun getSocketConnection(host: String, port: Int): Socket {
         return Socket(host, port)
     }
+
 
     @Throws(IOException::class)
     fun socks4aSocketConnection(
@@ -66,5 +78,17 @@ class ConnectionManager {
             return url.openConnection(proxy) as HttpURLConnection
         } else
             return url.openConnection() as HttpURLConnection
+    }
+
+
+    fun setSystemProxy(host: String, httpPort: String, socksPort: String) {
+
+        System.setProperty(ProxyEnvVar.USE_SYSTEM_PROXIES.value, "true");
+        System.setProperty(ProxyEnvVar.HTTP_PROXY_HOST.value, host)
+        System.setProperty(ProxyEnvVar.HTTP_PROXY_PORT.value, httpPort)
+        System.setProperty(ProxyEnvVar.HTTPS_PROXY_HOST.value, host)
+        System.setProperty(ProxyEnvVar.HTTPS_PROXY_PORT.value, httpPort)
+        System.setProperty(ProxyEnvVar.SOCKS_PROXY_HOST.value, host)
+        System.setProperty(ProxyEnvVar.SOCKS_PROXY_PORT.value, socksPort)
     }
 }

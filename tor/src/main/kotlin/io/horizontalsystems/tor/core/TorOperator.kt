@@ -2,21 +2,24 @@ package io.horizontalsystems.tor.core
 
 import com.jrummyapps.android.shell.Shell
 import io.horizontalsystems.tor.*
+import io.reactivex.Observable
 import io.reactivex.Single
 import java.io.*
 import java.util.logging.Level
 import java.util.logging.Logger
 
-class TorOperator(private val torSettings: Tor.Settings, private val torListener: Tor.Listener?) {
+class TorOperator(
+        private val torSettings: Tor.Settings,
+        private val torInfo: Tor.Info,
+        private val torInternalListener: Tor.Listener?,
+        private val torMainListener: Tor.Listener?) {
 
     private val logger = Logger.getLogger("TorOperator")
 
     lateinit var torControl: TorControl
     lateinit var resManager: TorResourceManager
-    private val torInfo = Tor.Info(Tor.ConnectionInfo())
 
-
-    fun start(): Single<Tor.Info> {
+    fun start(): Observable<Tor.Info> {
 
         try {
 
@@ -39,17 +42,16 @@ class TorOperator(private val torSettings: Tor.Settings, private val torListener
                     //-----------------------------
 
                     torControl = TorControl(
-                        resManager.fileTorControlPort,
-                        torSettings.appDataDir,
-                        torListener
-                    )
+                            resManager.fileTorControlPort,
+                            torSettings.appDataDir,
+                            torInternalListener,
+                            torMainListener)
+
                     eventMonitor(torInfo = torInfo, message = "Tor started successfully")
 
-                    return torControl.initConnection(4, torInfo)
-                        .map { connInfo ->
-
-                            Tor.Info(connInfo)
-                        }
+                    return torControl.initConnection(4, torInfo).map {
+                        torInfo
+                    }
                 }
             }
 
@@ -59,24 +61,21 @@ class TorOperator(private val torSettings: Tor.Settings, private val torListener
             eventMonitor(message = e.message.toString())
         }
 
-        return Single.just(Tor.Info(Tor.ConnectionInfo(-1)))
+        return Observable.just(torInfo)
     }
 
-    fun stop(): Single<Boolean> {
-        return Single.just(true)
+    fun stop(): Observable<Boolean> {
+        return Observable.just(true)
     }
 
     fun newIdentity(): Boolean {
         return torControl.newIdentity()
     }
 
-    private fun eventMonitor(
-        torInfo: Tor.Info? = null,
-        logLevel: Level = Level.SEVERE,
-        message: String
-    ) {
-        torListener?.let {
-            torListener.onProcessStatusUpdate(torInfo, message)
+    private fun eventMonitor(torInfo: Tor.Info? = null, logLevel: Level = Level.SEVERE, message: String) {
+
+        torMainListener?.let {
+            torMainListener.onProcessStatusUpdate(torInfo, message)
         }
 
         logger.log(logLevel, message)
@@ -120,7 +119,7 @@ class TorOperator(private val torSettings: Tor.Settings, private val torListener
 
         if (!shellResult.isSuccessful) {
             throw Exception(
-                "Error: " + shellResult.exitCode + " ERR=" + shellResult.getStderr() + " OUT=" + shellResult.getStdout()
+                    "Error: " + shellResult.exitCode + " ERR=" + shellResult.getStderr() + " OUT=" + shellResult.getStdout()
             )
         }
 

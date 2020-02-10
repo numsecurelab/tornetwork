@@ -11,7 +11,6 @@
         android:id="@+id/txTorStatus"
         android:layout_width="0dp"
         android:layout_height="40dp"
-        android:layout_marginTop="2dp"
         android:layout_marginEnd="2dp"
         android:background="#F3FFEE"
         android:paddingLeft="3dp"
@@ -19,8 +18,8 @@
         android:textColor="#181717"
         app:layout_constraintEnd_toEndOf="parent"
         app:layout_constraintHorizontal_bias="0.0"
-        app:layout_constraintStart_toEndOf="@+id/cxUseBridges"
-        app:layout_constraintTop_toTopOf="parent" />
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintTop_toBottomOf="@+id/btnTor" />
 
     <Button
         android:id="@+id/btnTor"
@@ -36,23 +35,10 @@
         android:id="@+id/cxUseBridges"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
-        android:layout_marginTop="2dp"
-        android:layout_marginBottom="2dp"
         android:text="Use Bridges"
-        app:layout_constraintBottom_toTopOf="@+id/btnVpn"
+        app:layout_constraintBottom_toTopOf="@+id/txTorStatus"
         app:layout_constraintStart_toEndOf="@+id/btnTor"
-        app:layout_constraintTop_toTopOf="parent"
-        app:layout_constraintVertical_bias="1.0" />
-
-    <Button
-        android:id="@+id/btnVpn"
-        android:layout_width="0dp"
-        android:layout_height="42dp"
-        android:layout_marginStart="2dp"
-        android:layout_marginTop="2dp"
-        android:text="Start VPN"
-        app:layout_constraintStart_toStartOf="parent"
-        app:layout_constraintTop_toBottomOf="@+id/btnTor" />
+        app:layout_constraintTop_toTopOf="parent" />
 
     <TextView
         android:id="@+id/txVpnStatus"
@@ -65,7 +51,6 @@
         android:paddingEnd="1dp"
         android:textColor="#181717"
         app:layout_constraintEnd_toEndOf="parent"
-        app:layout_constraintStart_toEndOf="@+id/btnVpn"
         app:layout_constraintTop_toBottomOf="@+id/txTorStatus" />
 
     <Button
@@ -78,7 +63,7 @@
         app:layout_constraintEnd_toEndOf="parent"
         app:layout_constraintHorizontal_bias="1.0"
         app:layout_constraintStart_toStartOf="parent"
-        app:layout_constraintTop_toBottomOf="@+id/txVpnStatus" />
+        app:layout_constraintTop_toBottomOf="@+id/txTorStatus" />
 
     <TextView
         android:id="@+id/txTorTestStatus"

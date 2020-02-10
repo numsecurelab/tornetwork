@@ -1,21 +1,44 @@
 package io.horizontalsystems.tor
 
 import io.horizontalsystems.tor.core.TorOperator
-import io.horizontalsystems.tor.vpn.service.TorVpnService
-import io.reactivex.Single
+import io.horizontalsystems.tor.service.TorService
+import io.reactivex.Observable
 
 class TorManager(
         val startNotificationService: Boolean = false,
         val torSettings: Tor.Settings,
         val torListener: Tor.Listener?) {
 
-    private val torOperator = TorOperator(torSettings, torListener)
+    init {
+        tmInstance = this
+    }
 
-    fun start(): Single<Tor.Info> {
+    var torInternalListener: Tor.Listener? = null
+    var torInfo: Tor.Info = Tor.Info(Tor.ConnectionInfo(-1))
+    private lateinit var torOperator: TorOperator
+
+
+    companion object{
+
+        lateinit var tmInstance: TorManager
+
+        fun getInstance(): TorManager {
+            return tmInstance
+        }
+    }
+
+    fun start(): Observable<Tor.Info> {
+
+        if(startNotificationService) {
+            TorService.start(torSettings)
+        }
+
+        torOperator = TorOperator(torSettings, torInfo, torListener, torInternalListener)
+
         return torOperator.start()
     }
 
-    fun stop(): Single<Boolean> {
+    fun stop(): Observable<Boolean> {
         return torOperator.stop()
     }
 
@@ -23,4 +46,11 @@ class TorManager(
         return torOperator.newIdentity()
     }
 
+    fun startTorService(){
+        TorService.start(torSettings)
+    }
+
+    fun stopTorService(){
+        TorService.stop(torSettings)
+    }
 }
