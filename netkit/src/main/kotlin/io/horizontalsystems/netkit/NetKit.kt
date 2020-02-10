@@ -61,7 +61,7 @@ class NetKit(private val context: Context, private val torListener: Tor.Listener
     fun enableProxy() {
         ConnectionManager.setSystemProxy(
                 true,
-                TorConstants.IP_LOCALHOST,
+                "127.1.1.1",
                 TorConstants.HTTP_PROXY_PORT_DEFAULT,
                 TorConstants.SOCKS_PROXY_PORT_DEFAULT
         )
