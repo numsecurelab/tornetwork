@@ -2,6 +2,11 @@ apply plugin: 'com.android.library'
 apply plugin: 'kotlin-android'
 apply plugin: "kotlin-kapt"
 
+repositories {
+    maven { url "https://raw.githubusercontent.com/guardianproject/gpmaven/master" }
+}
+
+
 android {
     compileSdkVersion 28
     defaultConfig {
