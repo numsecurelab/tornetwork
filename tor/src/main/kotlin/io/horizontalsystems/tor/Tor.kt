@@ -21,6 +21,7 @@ enum class EntityState(val processId: Int) {
 
 enum class ConnectionStatus {
 
+    UNDEFINED,
     CLOSED,
     CONNECTING,
     CONNECTED,

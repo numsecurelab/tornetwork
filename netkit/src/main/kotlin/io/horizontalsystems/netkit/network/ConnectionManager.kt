@@ -1,9 +1,16 @@
 package io.horizontalsystems.netkit.network
 
+import com.google.gson.GsonBuilder
+import okhttp3.OkHttpClient
+import okhttp3.logging.HttpLoggingInterceptor
+import retrofit2.Retrofit
+import retrofit2.adapter.rxjava2.RxJava2CallAdapterFactory
+import retrofit2.converter.gson.GsonConverterFactory
 import java.io.DataInputStream
 import java.io.DataOutputStream
 import java.io.IOException
 import java.net.*
+import java.util.concurrent.TimeUnit
 
 enum class ProxyEnvVar(val value: String) {
 
@@ -16,7 +23,7 @@ enum class ProxyEnvVar(val value: String) {
     SOCKS_PROXY_PORT("socksProxyPort");
 }
 
-class ConnectionManager {
+object ConnectionManager {
 
 
     private val READ_TIMEOUT_MILLISECONDS = 60000
@@ -29,8 +36,8 @@ class ConnectionManager {
 
     @Throws(IOException::class)
     fun socks4aSocketConnection(
-        networkHost: String, networkPort: Int, useProxy: Boolean, proxyHost: String = "",
-        proxyPort: Int = 0
+            networkHost: String, networkPort: Int, useProxy: Boolean, proxyHost: String = "",
+            proxyPort: Int = 0
     ): Socket? {
 
         val socket = Socket()
@@ -55,9 +62,9 @@ class ConnectionManager {
         if (firstByte != 0x00.toByte() || secondByte != 0x5a.toByte()) {
             socket.close()
             throw IOException(
-                "SOCKS4a connect failed, got " + firstByte + " - " + secondByte +
-                        ", but expected 0x00 - 0x5a:, networkHost= " + networkHost + ", networkPort = " + networkPort
-                        + ", socksHost=" + proxyHost + ",socksPort=" + proxyPort
+                    "SOCKS4a connect failed, got " + firstByte + " - " + secondByte +
+                            ", but expected 0x00 - 0x5a:, networkHost= " + networkHost + ", networkPort = " + networkPort
+                            + ", socksHost=" + proxyHost + ",socksPort=" + proxyPort
             )
         }
         inputStream.readShort()
@@ -66,11 +73,7 @@ class ConnectionManager {
         return socket
     }
 
-    fun httpURLConnection(
-        url: URL,
-        useProxy: Boolean,
-        proxyHost: String = "",
-        proxyPort: Int = 0
+    fun httpURLConnection(url: URL, useProxy: Boolean, proxyHost: String = "", proxyPort: Int = 0
     ): HttpURLConnection {
 
         if (useProxy) {
@@ -81,9 +84,9 @@ class ConnectionManager {
     }
 
 
-    fun setSystemProxy(host: String, httpPort: String, socksPort: String) {
+    fun setSystemProxy(userSystemProxy: Boolean, host: String, httpPort: String, socksPort: String) {
 
-        System.setProperty(ProxyEnvVar.USE_SYSTEM_PROXIES.value, "true");
+        System.setProperty(ProxyEnvVar.USE_SYSTEM_PROXIES.value, userSystemProxy.toString());
         System.setProperty(ProxyEnvVar.HTTP_PROXY_HOST.value, host)
         System.setProperty(ProxyEnvVar.HTTP_PROXY_PORT.value, httpPort)
         System.setProperty(ProxyEnvVar.HTTPS_PROXY_HOST.value, host)
@@ -91,4 +94,42 @@ class ConnectionManager {
         System.setProperty(ProxyEnvVar.SOCKS_PROXY_HOST.value, host)
         System.setProperty(ProxyEnvVar.SOCKS_PROXY_PORT.value, socksPort)
     }
+
+    fun disableSystemProxy() {
+        System.clearProperty(ProxyEnvVar.USE_SYSTEM_PROXIES.value)
+        System.clearProperty(ProxyEnvVar.HTTP_PROXY_HOST.value)
+        System.clearProperty(ProxyEnvVar.HTTP_PROXY_PORT.value)
+        System.clearProperty(ProxyEnvVar.HTTPS_PROXY_HOST.value)
+        System.clearProperty(ProxyEnvVar.HTTPS_PROXY_PORT.value)
+        System.clearProperty(ProxyEnvVar.SOCKS_PROXY_HOST.value)
+        System.clearProperty(ProxyEnvVar.SOCKS_PROXY_PORT.value)
+    }
+
+    fun retrofit(apiURL: String, timeout: Long = 60, useProxy: Boolean = false, proxyHost: String = "",
+                 proxyPort: Int = 0): Retrofit {
+
+        val logger = HttpLoggingInterceptor().apply {
+            level = HttpLoggingInterceptor.Level.BASIC
+        }
+
+        val httpClient = OkHttpClient.Builder()
+        httpClient.addInterceptor(logger)
+
+        if (useProxy) {
+            httpClient.proxy(Proxy(Proxy.Type.SOCKS, InetSocketAddress(proxyHost, proxyPort)))
+        }
+
+        httpClient.connectTimeout(timeout, TimeUnit.SECONDS)
+        httpClient.readTimeout(timeout, TimeUnit.SECONDS)
+
+        val gsonBuilder = GsonBuilder().setLenient()
+
+        return Retrofit.Builder()
+                .baseUrl(apiURL)
+                .addCallAdapterFactory(RxJava2CallAdapterFactory.create())
+                .addConverterFactory(GsonConverterFactory.create(gsonBuilder.create()))
+                .client(httpClient.build())
+                .build()
+    }
+
 }

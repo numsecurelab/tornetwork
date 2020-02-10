@@ -1,10 +1,14 @@
 package io.horizontalsystems.tor.core
 
 import com.jrummyapps.android.shell.Shell
-import io.horizontalsystems.tor.*
+import io.horizontalsystems.tor.ConnectionStatus
+import io.horizontalsystems.tor.EntityState
+import io.horizontalsystems.tor.Tor
+import io.horizontalsystems.tor.utils.ProcessUtils
 import io.reactivex.Observable
 import io.reactivex.Single
-import java.io.*
+import io.reactivex.schedulers.Schedulers
+import java.io.File
 import java.util.logging.Level
 import java.util.logging.Logger
 
@@ -64,8 +68,8 @@ class TorOperator(
         return Observable.just(torInfo)
     }
 
-    fun stop(): Observable<Boolean> {
-        return Observable.just(true)
+    fun stop(): Single<Boolean> {
+        return killAllDaemons().subscribeOn(Schedulers.io())
     }
 
     fun newIdentity(): Boolean {
@@ -74,11 +78,48 @@ class TorOperator(
 
     private fun eventMonitor(torInfo: Tor.Info? = null, logLevel: Level = Level.SEVERE, message: String) {
 
+        torInternalListener?.let {
+            torInternalListener.onProcessStatusUpdate(torInfo, message)
+        }
+
         torMainListener?.let {
             torMainListener.onProcessStatusUpdate(torInfo, message)
         }
 
         logger.log(logLevel, message)
+    }
+
+    @Throws(java.lang.Exception::class)
+    private fun killAllDaemons(): Single<Boolean> {
+
+        return Single.create{ emitter ->
+
+            try {
+
+                if (torControl.isConnectedToControl()) {
+                    emitter.onSuccess(torControl.shutdownTor())
+                } else {
+                    emitter.onSuccess(killTorProcess())
+                }
+
+                torInfo.state = EntityState.STOPPED
+                torInfo.connectionInfo.circuitStatus = ConnectionStatus.CLOSED
+
+                eventMonitor(torInfo, Level.INFO, "Tor stopped")
+            }
+            catch (e: java.lang.Exception){
+                emitter.onError(e)
+            }
+        }
+    }
+
+    private fun killTorProcess(): Boolean{
+        try {
+            ProcessUtils.killProcess(resManager.fileTor, "-9") // this is -HUP
+            return true
+        } catch (e: Exception) {
+            return false
+        }
     }
 
     @Throws(Exception::class)

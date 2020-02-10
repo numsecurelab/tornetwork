@@ -1,4 +1,4 @@
-package io.horizontalsystems.tor.utils
+package io.horizontalsystems.netkit.utils
 
 import android.app.Notification
 import android.app.NotificationChannel
@@ -15,7 +15,8 @@ class NotificationUtils {
     companion object {
         fun getNotification(context: Context, pendingIntent: PendingIntent, title: String, description: String, channelId: String): Notification {
 
-            createNotificationChannel(context, title, channelId)
+            createNotificationChannel(
+                    context, title, channelId)
 
             val mBuilder = NotificationCompat.Builder(context, channelId)
                     .setSmallIcon(R.drawable.ic_tor)
@@ -27,7 +28,7 @@ class NotificationUtils {
             return mBuilder.build()
         }
 
-        private fun createNotificationChannel(ctx: Context, appName: String, channelId: String) {
+        fun createNotificationChannel(ctx: Context, appName: String, channelId: String) {
 
             val androidNotificationManager = NotificationManagerCompat.from(ctx)
             val importance = NotificationManager.IMPORTANCE_LOW

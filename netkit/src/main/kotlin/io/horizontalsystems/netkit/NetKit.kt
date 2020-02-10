@@ -1,46 +1,73 @@
 package io.horizontalsystems.netkit
 
+import android.content.Context
 import io.horizontalsystems.netkit.network.ConnectionManager
 import io.horizontalsystems.tor.Tor
 import io.horizontalsystems.tor.TorManager
 import io.horizontalsystems.tor.core.TorConstants
 import io.reactivex.Observable
 import io.reactivex.Single
+import retrofit2.Retrofit
 import java.net.HttpURLConnection
 import java.net.Socket
 import java.net.URL
 
-class NetKit(private val torListener: Tor.Listener) {
+class NetKit(private val context: Context, private val torListener: Tor.Listener) {
 
+    private val torNotifManager = NetNotifManager(context)
+    private val torManager = TorManager(context, torNotifManager, torListener)
 
-    private val connectionManager = ConnectionManager()
+    fun startTor(useBridges: Boolean): Observable<Tor.Info> {
 
-    fun startTor(torSettings: Tor.Settings): Observable<Tor.Info> {
-
-        val torManager = TorManager(true, torSettings, torListener)
-
-        return torManager.start().map {
-            connectionManager.setSystemProxy(
-                TorConstants.IP_LOCALHOST,
-                TorConstants.HTTP_PROXY_PORT_DEFAULT,
-                TorConstants.SOCKS_PROXY_PORT_DEFAULT
-            )
-
+        return torManager.start(useBridges).let {
+            enableProxy()
             it
         }
     }
 
-    fun stopVpn(): Boolean {
-        return true
+    fun stopTor(): Single<Boolean> {
+        return torManager.stop().let {
+            disableProxy()
+            it
+        }
     }
 
     fun getSocketConnection(host: String, port: Int): Socket {
-        return connectionManager.getSocketConnection(host, port)
+        return ConnectionManager.getSocketConnection(host, port)
     }
 
     fun getHttpConnection(url: URL): HttpURLConnection {
 
-        return connectionManager.httpURLConnection(url, false)
+        if (torManager.torInfo.isStarted) {
+            return ConnectionManager.httpURLConnection(
+                    url,
+                    true,
+                    TorConstants.IP_LOCALHOST,
+                    TorConstants.HTTP_PROXY_PORT_DEFAULT.toInt())
+
+        } else
+            return ConnectionManager.httpURLConnection(url, false)
     }
 
+    fun buildRetrofit(url: String, timeout: Long = 60): Retrofit {
+        return ConnectionManager.retrofit(
+                url,
+                timeout, torManager.torInfo.isStarted,
+                TorConstants.IP_LOCALHOST,
+                TorConstants.SOCKS_PROXY_PORT_DEFAULT.toInt())
+    }
+
+
+    fun enableProxy() {
+        ConnectionManager.setSystemProxy(
+                true,
+                TorConstants.IP_LOCALHOST,
+                TorConstants.HTTP_PROXY_PORT_DEFAULT,
+                TorConstants.SOCKS_PROXY_PORT_DEFAULT
+        )
+    }
+
+    fun disableProxy() {
+        ConnectionManager.disableSystemProxy()
+    }
 }

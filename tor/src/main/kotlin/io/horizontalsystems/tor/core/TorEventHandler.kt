@@ -42,8 +42,8 @@ open class TorEventHandler(
             else{
                 connInfo.circuitStatus = ConnectionStatus.CONNECTING
             }
-
         }
+
         torInternalListener?.onConnStatusUpdate(connInfo, "ConnectionStatus: ${status}")
         torMainListener?.onConnStatusUpdate(connInfo, "ConnectionStatus: ${status}")
     }
@@ -55,11 +55,10 @@ open class TorEventHandler(
 
             if (msg.contains("100")) {
                 connInfo.isBootstrapped = true
+                logger.info(logMessage)
+                torInternalListener?.onConnStatusUpdate(connInfo, logMessage)
+                torMainListener?.onConnStatusUpdate(connInfo, logMessage)
             }
-
-            logger.info(logMessage)
-            torInternalListener?.onConnStatusUpdate(connInfo, logMessage)
-            torMainListener?.onConnStatusUpdate(connInfo, logMessage)
         }
     }
 }

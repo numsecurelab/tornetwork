@@ -32,6 +32,24 @@ class TorControl(
         }
     }
 
+    fun shutdownTor(): Boolean {
+
+        try {
+            controlConn?.let {
+                it.shutdownTor("HALT")
+                return true
+            }
+        } catch (e: java.lang.Exception) {
+
+        }
+
+        return false
+    }
+
+    fun isConnectedToControl(): Boolean {
+        return controlConn != null
+    }
+
     fun initConnection(maxTries: Int, torInfo: Tor.Info): Observable<Tor.ConnectionInfo> {
 
         return createControlConn(maxTries)
@@ -45,7 +63,7 @@ class TorControl(
 
     private fun createControlConn(maxTries: Int): Observable<TorControlConnection> {
 
-        return Observable.create{ emitter ->
+        return Observable.create { emitter ->
             var attempt = 0
 
             while (controlConn == null && attempt++ < maxTries) {

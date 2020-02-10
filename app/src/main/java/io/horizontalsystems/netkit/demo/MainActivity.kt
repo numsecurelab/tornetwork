@@ -6,38 +6,51 @@ import android.widget.ArrayAdapter
 import androidx.appcompat.app.AppCompatActivity
 import io.horizontalsystems.netkit.NetKit
 import io.horizontalsystems.tor.Tor
+import io.reactivex.Flowable
 import io.reactivex.android.schedulers.AndroidSchedulers
 import io.reactivex.disposables.CompositeDisposable
+import io.reactivex.schedulers.Schedulers
 import kotlinx.android.synthetic.main.activity_main.*
+import retrofit2.http.GET
+import retrofit2.http.Headers
+import retrofit2.http.Url
 import java.io.InputStreamReader
-import java.io.ObjectInputStream
-import java.io.ObjectOutputStream
 import java.net.URL
 
 
 class MainActivity : AppCompatActivity(), Tor.Listener {
 
+    interface GetIPApi {
+        @GET
+        @Headers("Content-Type: text/plain")
+        fun getIP(@Url path: String): Flowable<String>
+    }
+
+    private lateinit var netKit: NetKit
     private val listItems = ArrayList<String>()
     private lateinit var adapter: ArrayAdapter<String>
     private val disposables = CompositeDisposable()
     private var torStarted: Boolean = false
 
-    val netKit = NetKit(this)
 
     @SuppressLint("SetTextI18n")
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         setContentView(R.layout.activity_main)
 
+        //------------Init NetKit -------------------
+        netKit = NetKit(context = applicationContext, torListener = this)
+        //-------------------------------------------
 
         btnTor.setOnClickListener {
-            if(!torStarted) {
+            if (!torStarted) {
                 startTor()
-                btnTor.text = "Stop Vpn"
-            }
-            else{
+                torStarted = true
+                btnTor.text = "Stop Tor"
+            } else {
                 stopTor()
-                btnTor.text = "Start Vpn"
+                torStarted = false
+                btnTor.text = "Start Tor"
             }
         }
 
@@ -63,6 +76,16 @@ class MainActivity : AppCompatActivity(), Tor.Listener {
     }
 
     private fun stopTor() {
+        disposables.add(
+                netKit.stopTor()
+                        .observeOn(AndroidSchedulers.mainThread())
+                        .subscribe(
+                                { torStopped ->
+                                    logEvent("Tor stopped:${torStopped}")
+                                },
+                                { error ->
+                                    logEvent("TorError:${error}")
+                                }))
 
     }
 
@@ -70,7 +93,7 @@ class MainActivity : AppCompatActivity(), Tor.Listener {
     private fun startTor() {
 
         disposables.add(
-                netKit.startTor(Tor.Settings(context = applicationContext, vpnMode = false, useBridges = false))
+                netKit.startTor(useBridges = false)
                         .observeOn(AndroidSchedulers.mainThread())
                         .subscribe(
                                 { netStatus ->
@@ -94,9 +117,11 @@ class MainActivity : AppCompatActivity(), Tor.Listener {
     @SuppressLint("SetTextI18n")
     private fun getIP() {
 
+        val checkIPUrl = "https://api.ipify.org"
+
         object : Thread() {
             override fun run() {
-                val urlConnection = netKit.getHttpConnection(URL("https://api.ipify.org"))
+                val urlConnection = netKit.getHttpConnection(URL(checkIPUrl))
 
                 try {
                     val inStream = urlConnection.inputStream
@@ -118,37 +143,26 @@ class MainActivity : AppCompatActivity(), Tor.Listener {
                     urlConnection.disconnect()
                 }
 
+                txTorTestStatus2.text = "Getting IP from RetroFit :"
 
-                //--------Socket Conn ----------------------------------
-                try {
-                    val socket = netKit.getSocketConnection("api.ipify.org",443)
-                    var oos: ObjectOutputStream? = null
-                    var ois: ObjectInputStream? = null
+                //------------------------------------------------------
+                val obser = netKit.buildRetrofit(checkIPUrl)
+                        .create(GetIPApi::class.java)
 
-                    oos = ObjectOutputStream(socket.getOutputStream())
-                    println("Sending request to Socket Server")
-                    oos.writeObject("Data Sent");
-
-                    ois = ObjectInputStream(socket.getInputStream())
-                    var message = ois.readObject() as String
-                    txTorTestStatus2.text = "Message: $message"
-                    oos.writeObject("exit")
-                    ois = ObjectInputStream(socket.getInputStream())
-                    message = ois.readObject() as String
-                    txTorTestStatus2.text = "Message: $message"
-
-                    ois.close()
-                    oos.close()
-                } catch (e: Exception) {
-                    txTorTestStatus2.text = e.toString()
-                } finally {
-                }
+                disposables.add(
+                        obser.getIP("/").subscribeOn(Schedulers.io()).observeOn(AndroidSchedulers.mainThread())
+                                .subscribe({ result -> txTorTestStatus2.text = "IP assigned :" + result },
+                                           { error ->
+                                               txTorTestStatus2.text = error.toString()
+                                           })
+                )
 
                 //------------------------------------------------------
             }
 
         }.start()
     }
+
 
     override fun onProcessStatusUpdate(torInfo: Tor.Info?, message: String) {
         runOnUiThread {
