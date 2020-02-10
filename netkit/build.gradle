@@ -2,10 +2,6 @@ apply plugin: 'com.android.library'
 apply plugin: 'kotlin-android'
 apply plugin: "kotlin-kapt"
 
-repositories {
-    maven { url "https://raw.githubusercontent.com/guardianproject/gpmaven/master" }
-}
-
 
 android {
     compileSdkVersion 28
@@ -55,7 +51,7 @@ dependencies {
 
     //  Test helpers
     testImplementation 'org.junit.jupiter:junit-jupiter:5.4.1'
- 
+
     androidTestImplementation 'androidx.test:runner:1.2.0-alpha03'
     androidTestImplementation 'androidx.test.espresso:espresso-core:3.2.0-alpha03'
 }

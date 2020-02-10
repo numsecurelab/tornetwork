@@ -1,6 +1,6 @@
 package io.horizontalsystems.tor.core
 
-import com.jrummyapps.android.shell.Shell
+import com.jaredrummler.android.shell.Shell
 import io.horizontalsystems.tor.ConnectionStatus
 import io.horizontalsystems.tor.EntityState
 import io.horizontalsystems.tor.Tor
