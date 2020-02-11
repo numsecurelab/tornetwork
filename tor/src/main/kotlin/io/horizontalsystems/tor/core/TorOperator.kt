@@ -103,7 +103,7 @@ class TorOperator(
                 }
 
                 torInfo.state = EntityState.STOPPED
-                torInfo.connectionInfo.circuitStatus = ConnectionStatus.CLOSED
+                torInfo.connectionInfo.connectionState = ConnectionStatus.CLOSED
 
                 eventMonitor(torInfo, Level.INFO, "Tor stopped")
             }

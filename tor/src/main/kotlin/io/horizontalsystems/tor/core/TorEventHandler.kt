@@ -21,6 +21,23 @@ open class TorEventHandler(
     }
 
     override fun orConnStatus(status: String?, orName: String?) {
+        status?.let {
+
+            if(TextUtils.equals(status, "CONNECTED"))
+                connInfo.connectionState = ConnectionStatus.CONNECTED
+            else if(TextUtils.equals(status, "BUILT")
+                || TextUtils.equals(status, "LAUNCHED")
+                || TextUtils.equals(status, "EXTENDED")
+                 ) {
+                connInfo.connectionState = ConnectionStatus.CONNECTING
+
+            } else if(TextUtils.equals(status, "CLOSED")){
+                connInfo.connectionState = ConnectionStatus.CLOSED
+            }
+        }
+
+        torInternalListener?.onConnStatusUpdate(connInfo, "ConnectionStatus: ${status}")
+        torMainListener?.onConnStatusUpdate(connInfo, "ConnectionStatus: ${status}")
     }
 
     override fun newDescriptors(orList: MutableList<String>?) {
@@ -31,21 +48,8 @@ open class TorEventHandler(
 
     override fun circuitStatus(status: String?, circID: String?, path: String?) {
 
-        status?.let {
-
-            if(TextUtils.equals(status, "BUILT")) {
-                if (connInfo.circuitStatus == ConnectionStatus.CONNECTING)
-                    connInfo.circuitStatus = ConnectionStatus.CONNECTED
-            } else if(TextUtils.equals(status, "CLOSED")){
-                connInfo.circuitStatus = ConnectionStatus.CLOSED
-            }
-            else{
-                connInfo.circuitStatus = ConnectionStatus.CONNECTING
-            }
-        }
-
-        torInternalListener?.onConnStatusUpdate(connInfo, "ConnectionStatus: ${status}")
-        torMainListener?.onConnStatusUpdate(connInfo, "ConnectionStatus: ${status}")
+        torInternalListener?.onConnStatusUpdate(connInfo, "CircuitStatus: ${status}")
+        torMainListener?.onConnStatusUpdate(connInfo, "CircuitStatus: ${status}")
     }
 
     override fun message(severity: String?, msg: String?) {

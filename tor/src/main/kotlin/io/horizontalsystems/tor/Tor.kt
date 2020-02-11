@@ -66,15 +66,15 @@ object Tor {
         var proxySocksPort = TorConstants.SOCKS_PROXY_PORT_DEFAULT
         var proxyHttpPort = TorConstants.HTTP_PROXY_PORT_DEFAULT
         var isBootstrapped: Boolean = false
-        var circuitStatus = ConnectionStatus.CLOSED
+        var connectionState = ConnectionStatus.CLOSED
 
         fun getConnectionStatus(): ConnectionStatus {
 
-            if (circuitStatus == ConnectionStatus.CONNECTED && isBootstrapped)
+            if (connectionState == ConnectionStatus.CONNECTED && isBootstrapped)
                 return ConnectionStatus.CONNECTED
             else {
 
-                if (circuitStatus == ConnectionStatus.CONNECTING)
+                if (connectionState == ConnectionStatus.CONNECTING)
                     return ConnectionStatus.CONNECTING
                 else
                     return ConnectionStatus.CLOSED

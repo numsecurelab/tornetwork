@@ -118,7 +118,7 @@ class TorControl(
                 torProcessId = torProcId.toInt()
                 torInfo.connectionInfo.processId = torProcessId
 
-                torInfo.connectionInfo.circuitStatus = ConnectionStatus.CONNECTING
+                torInfo.connectionInfo.connectionState = ConnectionStatus.CONNECTING
                 TorEventHandler(torInternalListener, torMainListener, torInfo.connectionInfo).let {
                     torEventHandler = it
                     addEventHandler(conn, it)

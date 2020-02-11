@@ -11,14 +11,20 @@ import io.reactivex.android.schedulers.AndroidSchedulers
 import io.reactivex.disposables.CompositeDisposable
 import io.reactivex.schedulers.Schedulers
 import kotlinx.android.synthetic.main.activity_main.*
+import okhttp3.OkHttpClient
+import okhttp3.Request
 import retrofit2.http.GET
 import retrofit2.http.Headers
 import retrofit2.http.Url
+import java.io.BufferedReader
 import java.io.InputStreamReader
+import java.io.PrintWriter
+import java.net.MalformedURLException
 import java.net.URL
 
 
 class MainActivity : AppCompatActivity(), Tor.Listener {
+
 
     interface GetIPApi {
         @GET
@@ -60,6 +66,7 @@ class MainActivity : AppCompatActivity(), Tor.Listener {
 
         adapter = ArrayAdapter(this, android.R.layout.simple_list_item_1, listItems)
         statusView.adapter = adapter
+
     }
 
     override fun onDestroy() {
@@ -118,48 +125,18 @@ class MainActivity : AppCompatActivity(), Tor.Listener {
     private fun getIP() {
 
         val checkIPUrl = "https://api.ipify.org"
+        val checkIPApiURL = "http://api.ipapi.com/api/check?access_key=d786e103047a3510ba0d8bb0d9a92b02&fields=ip"
+
 
         object : Thread() {
             override fun run() {
-                val urlConnection = netKit.getHttpConnection(URL(checkIPUrl))
 
-                try {
-                    val inStream = urlConnection.inputStream
-                    val isw = InputStreamReader(inStream)
+                //doHTTPURLConnection(checkIPUrl)
+                doOkHttp3(checkIPUrl)
+                //doRetrofitClient(checkIPUrl)
+                //doSocketConnection(checkIPApiURL)
 
-                    var data: Int = isw.read()
-                    var output = ""
-
-                    while (data != -1) {
-                        val current = data.toChar()
-                        data = isw.read()
-                        output += current
-                    }
-                    txTorTestStatus.text = "IP assigned :" + output
-
-                } catch (e: Exception) {
-                    txTorTestStatus.text = e.toString()
-                } finally {
-                    urlConnection.disconnect()
-                }
-
-                txTorTestStatus2.text = "Getting IP from RetroFit :"
-
-                //------------------------------------------------------
-                val obser = netKit.buildRetrofit(checkIPUrl)
-                        .create(GetIPApi::class.java)
-
-                disposables.add(
-                        obser.getIP("/").subscribeOn(Schedulers.io()).observeOn(AndroidSchedulers.mainThread())
-                                .subscribe({ result -> txTorTestStatus2.text = "IP assigned :" + result },
-                                           { error ->
-                                               txTorTestStatus2.text = error.toString()
-                                           })
-                )
-
-                //------------------------------------------------------
             }
-
         }.start()
     }
 
@@ -173,6 +150,114 @@ class MainActivity : AppCompatActivity(), Tor.Listener {
     override fun onConnStatusUpdate(torConnInfo: Tor.ConnectionInfo?, message: String) {
         runOnUiThread {
             logEvent("Tor Connection Status:${message}")
+        }
+    }
+
+    fun doOkHttp3(url: String) {
+        val client = OkHttpClient()
+        val request: Request = Request.Builder()
+                .url(url)
+                .build()
+
+        client.newCall(request).execute()
+                .use({ response ->
+                         txTorTestStatus.text = response.body?.let {
+                             it.charStream().readText()
+                         }
+                     })
+    }
+
+
+    fun doHTTPURLConnection(url: String) {
+
+        val urlConnection = netKit.getHttpConnection(URL(url))
+
+        try {
+            val inStream = urlConnection.inputStream
+            val isw = InputStreamReader(inStream)
+
+            var data: Int = isw.read()
+            var output = ""
+
+            while (data != -1) {
+                val current = data.toChar()
+                data = isw.read()
+                output += current
+            }
+            txTorTestStatus.text = "IP assigned :" + output
+
+        } catch (e: Exception) {
+            txTorTestStatus.text = e.toString()
+        } finally {
+            urlConnection.disconnect()
+        }
+
+        txTorTestStatus2.text = "Getting IP from RetroFit :"
+
+    }
+
+    fun doRetrofitClient(url: String) {
+        val retroFitClient = netKit.buildRetrofit(url)
+        val obser = retroFitClient.create(GetIPApi::class.java)
+
+        disposables.add(
+                obser.getIP("/").subscribeOn(Schedulers.io()).observeOn(AndroidSchedulers.mainThread())
+                        .subscribe({ result -> txTorTestStatus2.text = "IP assigned :" + result },
+                                   { error ->
+                                       txTorTestStatus2.text = error.toString()
+                                   })
+        )
+    }
+
+    fun doSocketConnection(sUrl: String) {
+        try {
+
+            val url: URL
+
+            url = try {
+                URL(sUrl)
+            } catch (ex: MalformedURLException) {
+                return
+            }
+
+            val hostname = url.host
+            val port = 80
+
+            txTorTestStatus3.text = "Getting IP from socket connection"
+            var socket = netKit.getSocketConnection(hostname, port)
+
+            val output = socket.getOutputStream()
+            val writer = PrintWriter(output, true)
+
+            //writer.println("HEAD " + url.path + " HTTP/1.1")
+            writer.println("GET " + url.getFile() + " HTTP/1.1")
+            writer.println("Host: $hostname")
+            writer.println("User-Agent: Simple Http Client")
+            writer.println("Accept: text/plain")
+            writer.println("Accept-Language: en-US")
+            writer.println("Connection: close")
+            writer.println()
+
+            val input = socket.getInputStream()
+            val reader = BufferedReader(InputStreamReader(input))
+
+            var line: String = ""
+
+
+            while (reader.readLine().also { line = it } != null) {
+                if (line.contains("{\"ip")) {
+                    txTorTestStatus3.text = line
+                    break
+                }
+            }
+
+            output.close()
+            input.close()
+            socket.close()
+
+        } catch (e: Exception) {
+            txTorTestStatus3.text = e.toString()
+        } finally {
         }
     }
 

@@ -16,9 +16,11 @@ enum class ProxyEnvVar(val value: String) {
 
     USE_SYSTEM_PROXIES("java.net.useSystemProxies"),
     HTTP_PROXY_HOST("http.proxyHost"),
-    HTTP_PROXY_PORT("http.proxyPOrt"),
+    HTTP_PROXY_PORT("http.proxyPort"),
+    HTTP_NONPROXY_HOSTS("http.nonProxyHosts"),
     HTTPS_PROXY_HOST("https.proxyHost"),
     HTTPS_PROXY_PORT("https.proxyPort"),
+    HTTPS_NONPROXY_HOSTS("https.nonProxyHosts"),
     SOCKS_PROXY_HOST("socksProxyHost"),
     SOCKS_PROXY_PORT("socksProxyPort");
 }
@@ -29,16 +31,14 @@ object ConnectionManager {
     private val READ_TIMEOUT_MILLISECONDS = 60000
     private val CONNECT_TIMEOUT_MILLISECONDS = 60000
 
-    fun getSocketConnection(host: String, port: Int): Socket {
-        return Socket(host, port)
+    fun getSocketConnection(networkHost: String, networkPort: Int): Socket {
+        return Socket(networkHost, networkPort)
     }
 
-
     @Throws(IOException::class)
-    fun socks4aSocketConnection(
-            networkHost: String, networkPort: Int, useProxy: Boolean, proxyHost: String = "",
-            proxyPort: Int = 0
-    ): Socket? {
+    fun socks4aSocketConnection(networkHost: String, networkPort: Int, useProxy: Boolean, proxyHost: String = "",
+                                proxyPort: Int = 0
+    ): Socket {
 
         val socket = Socket()
         val socksAddress: SocketAddress = InetSocketAddress(proxyHost, proxyPort)

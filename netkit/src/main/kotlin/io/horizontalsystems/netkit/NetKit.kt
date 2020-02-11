@@ -17,6 +17,18 @@ class NetKit(private val context: Context, private val torListener: Tor.Listener
     private val torNotifManager = NetNotifManager(context)
     private val torManager = TorManager(context, torNotifManager, torListener)
 
+    companion object {
+        lateinit var instance: NetKit
+    }
+
+    init {
+        instance = this
+    }
+
+    fun getInstance(): NetKit {
+        return instance
+    }
+
     fun startTor(useBridges: Boolean): Observable<Tor.Info> {
 
         return torManager.start(useBridges).let {
@@ -33,26 +45,30 @@ class NetKit(private val context: Context, private val torListener: Tor.Listener
     }
 
     fun getSocketConnection(host: String, port: Int): Socket {
-        return ConnectionManager.getSocketConnection(host, port)
+        return ConnectionManager.socks4aSocketConnection(
+                host,
+                port,
+                torManager.torInfo.isStarted,
+                TorConstants.IP_LOCALHOST,
+                TorConstants.SOCKS_PROXY_PORT_DEFAULT.toInt())
+
     }
 
     fun getHttpConnection(url: URL): HttpURLConnection {
 
-        if (torManager.torInfo.isStarted) {
-            return ConnectionManager.httpURLConnection(
-                    url,
-                    true,
-                    TorConstants.IP_LOCALHOST,
-                    TorConstants.HTTP_PROXY_PORT_DEFAULT.toInt())
+        return ConnectionManager.httpURLConnection(
+                url,
+                torManager.torInfo.isStarted,
+                TorConstants.IP_LOCALHOST,
+                TorConstants.HTTP_PROXY_PORT_DEFAULT.toInt())
 
-        } else
-            return ConnectionManager.httpURLConnection(url, false)
     }
 
     fun buildRetrofit(url: String, timeout: Long = 60): Retrofit {
         return ConnectionManager.retrofit(
                 url,
-                timeout, torManager.torInfo.isStarted,
+                timeout,
+                torManager.torInfo.isStarted,
                 TorConstants.IP_LOCALHOST,
                 TorConstants.SOCKS_PROXY_PORT_DEFAULT.toInt())
     }
@@ -61,7 +77,7 @@ class NetKit(private val context: Context, private val torListener: Tor.Listener
     fun enableProxy() {
         ConnectionManager.setSystemProxy(
                 true,
-                "127.1.1.1",
+                TorConstants.IP_LOCALHOST,
                 TorConstants.HTTP_PROXY_PORT_DEFAULT,
                 TorConstants.SOCKS_PROXY_PORT_DEFAULT
         )
