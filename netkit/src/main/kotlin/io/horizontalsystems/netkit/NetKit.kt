@@ -31,17 +31,15 @@ class NetKit(private val context: Context, private val torListener: Tor.Listener
 
     fun startTor(useBridges: Boolean): Observable<Tor.Info> {
 
-        return torManager.start(useBridges).let {
-            enableProxy()
-            it
-        }
+        enableProxy()
+
+        return torManager.start(useBridges)
     }
 
     fun stopTor(): Single<Boolean> {
-        return torManager.stop().let {
-            disableProxy()
-            it
-        }
+        disableProxy()
+
+        return torManager.stop()
     }
 
     fun getSocketConnection(host: String, port: Int): Socket {
