@@ -1,8 +1,10 @@
 package io.horizontalsystems.netkit
 
 import android.app.NotificationManager
+import android.app.PendingIntent
 import android.content.Context
 import android.content.Entity
+import android.content.Intent
 import androidx.core.app.NotificationCompat
 import io.horizontalsystems.tor.ConnectionStatus
 import io.horizontalsystems.tor.R
@@ -52,6 +54,7 @@ class NetNotifManager(private val context: Context) : Tor.Listener {
                 .setOngoing(true)
                 //.setGroupAlertBehavior(GROUP_ALERT_SUMMARY)
                 .setGroup("Tor")
+                .setContentIntent(getPendingIntent())
                 .setCategory(NotificationCompat.CATEGORY_PROGRESS)
                 .setGroupSummary(false)
                 .setSmallIcon(icon)
@@ -59,6 +62,12 @@ class NetNotifManager(private val context: Context) : Tor.Listener {
         val mNotificationManager = context.getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
 
         mNotificationManager.notify(TOR_SERVICE_NOTIFICATION_ID, notification.build())
+    }
+
+    private fun getPendingIntent(): PendingIntent?{
+        val launchIntent: Intent = context.packageManager.getLaunchIntentForPackage(context.packageName) ?: return null
+        launchIntent.flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TASK
+        return PendingIntent.getActivity(context, 0, launchIntent, 0)
     }
 
     override fun onProcessStatusUpdate(torInfo: Tor.Info?, message: String) {

@@ -133,6 +133,7 @@ class MainActivity : AppCompatActivity(), Tor.Listener {
 
                 //doHTTPURLConnection(checkIPUrl)
                 doOkHttp3(checkIPUrl)
+                doURL(checkIPUrl)
                 //doRetrofitClient(checkIPUrl)
                 //doSocketConnection(checkIPApiURL)
 
@@ -259,6 +260,33 @@ class MainActivity : AppCompatActivity(), Tor.Listener {
             txTorTestStatus3.text = e.toString()
         } finally {
         }
+    }
+
+
+    fun doURL(uri: String){
+
+        var i: Int = 0
+        var c: Char = '0'
+
+        return URL(uri)
+                .openConnection()
+                .apply {
+                    connectTimeout = 5000
+                    readTimeout = 60000
+                    setRequestProperty("Accept", "text/plain")
+                }
+                .getInputStream()
+                .use {
+
+                    var out: String = ""
+                    while (it.read().also({ i = it }) !== -1) {
+                        c = i.toChar()
+                        // prints character
+                        out = out + c
+                    }
+                    txTorTestStatus2.text = out
+
+                }
     }
 
 }
