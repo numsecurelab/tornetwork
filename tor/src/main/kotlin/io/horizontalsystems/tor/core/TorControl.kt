@@ -2,9 +2,7 @@ package io.horizontalsystems.tor.core
 
 import io.horizontalsystems.tor.ConnectionStatus
 import io.horizontalsystems.tor.Tor
-import io.reactivex.Flowable
 import io.reactivex.Observable
-import io.reactivex.Single
 import io.reactivex.schedulers.Schedulers
 import net.freehaven.tor.control.TorControlConnection
 import java.io.*
@@ -15,7 +13,6 @@ import java.util.logging.Logger
 class TorControl(
         private val fileControlPort: File,
         private val appCacheHome: File,
-        private val torInternalListener: Tor.Listener?,
         private val torMainListener: Tor.Listener?) {
 
     private val logger = Logger.getLogger("TorControl")
@@ -119,7 +116,7 @@ class TorControl(
                 torInfo.connectionInfo.processId = torProcessId
 
                 torInfo.connectionInfo.connectionState = ConnectionStatus.CONNECTING
-                TorEventHandler(torInternalListener, torMainListener, torInfo.connectionInfo).let {
+                TorEventHandler(torMainListener, torInfo.connectionInfo).let {
                     torEventHandler = it
                     addEventHandler(conn, it)
                 }

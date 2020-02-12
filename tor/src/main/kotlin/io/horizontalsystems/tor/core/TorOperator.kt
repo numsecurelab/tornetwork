@@ -15,7 +15,6 @@ import java.util.logging.Logger
 class TorOperator(
         private val torSettings: Tor.Settings,
         private val torInfo: Tor.Info,
-        private val torInternalListener: Tor.Listener?,
         private val torMainListener: Tor.Listener?) {
 
     private val logger = Logger.getLogger("TorOperator")
@@ -48,7 +47,6 @@ class TorOperator(
                     torControl = TorControl(
                             resManager.fileTorControlPort,
                             torSettings.appDataDir,
-                            torInternalListener,
                             torMainListener)
 
                     eventMonitor(torInfo = torInfo, message = "Tor started successfully")
@@ -77,14 +75,7 @@ class TorOperator(
     }
 
     private fun eventMonitor(torInfo: Tor.Info? = null, logLevel: Level = Level.SEVERE, message: String) {
-
-        torInternalListener?.let {
-            torInternalListener.onProcessStatusUpdate(torInfo, message)
-        }
-
-        torMainListener?.let {
-            torMainListener.onProcessStatusUpdate(torInfo, message)
-        }
+        torMainListener?.onProcessStatusUpdate(torInfo, message)
 
         logger.log(logLevel, message)
     }

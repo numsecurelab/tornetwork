@@ -3,16 +3,15 @@ package io.horizontalsystems.netkit
 import android.app.NotificationManager
 import android.app.PendingIntent
 import android.content.Context
-import android.content.Entity
 import android.content.Intent
 import androidx.core.app.NotificationCompat
+import io.horizontalsystems.netkit.utils.NotificationUtils
 import io.horizontalsystems.tor.ConnectionStatus
+import io.horizontalsystems.tor.EntityState
 import io.horizontalsystems.tor.R
 import io.horizontalsystems.tor.Tor
-import io.horizontalsystems.netkit.utils.NotificationUtils
-import io.horizontalsystems.tor.EntityState
 
-class NetNotifManager(private val context: Context) : Tor.Listener {
+class NetNotifManager(private val context: Context) {
 
     private val TOR_CHANNEL_ID = "io.horizontalsystems.netkit.tor.channelId"
     private val TOR_SERVICE_NOTIFICATION_ID = 1
@@ -70,19 +69,4 @@ class NetNotifManager(private val context: Context) : Tor.Listener {
         return PendingIntent.getActivity(context, 0, launchIntent, 0)
     }
 
-    override fun onProcessStatusUpdate(torInfo: Tor.Info?, message: String) {
-        torInfo?.let {
-            updateNotification(torInfo, message)
-        }
-    }
-
-    override fun onConnStatusUpdate(torConnInfo: Tor.ConnectionInfo?, message: String) {
-        torConnInfo?.let {
-            if (torConnInfo.getConnectionStatus() != lastConnectionStatus) {
-                updateNotification(Tor.Info(torConnInfo), message)
-            }
-
-            lastConnectionStatus = torConnInfo.getConnectionStatus()
-        }
-    }
 }

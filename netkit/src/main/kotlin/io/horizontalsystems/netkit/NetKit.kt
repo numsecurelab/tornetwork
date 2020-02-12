@@ -12,25 +12,11 @@ import java.net.HttpURLConnection
 import java.net.Socket
 import java.net.URL
 
-class NetKit(private val context: Context, private val torListener: Tor.Listener) {
+class NetKit(context: Context, torListener: Tor.Listener) {
 
-    private val torNotifManager = NetNotifManager(context)
-    private val torManager = TorManager(context, torNotifManager, torListener)
-
-    companion object {
-        lateinit var instance: NetKit
-    }
-
-    init {
-        instance = this
-    }
-
-    fun getInstance(): NetKit {
-        return instance
-    }
+    private val torManager = TorManager(context, torListener)
 
     fun startTor(useBridges: Boolean): Observable<Tor.Info> {
-
         enableProxy()
 
         return torManager.start(useBridges)

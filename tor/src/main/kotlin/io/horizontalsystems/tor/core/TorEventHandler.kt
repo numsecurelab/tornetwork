@@ -7,7 +7,6 @@ import net.freehaven.tor.control.EventHandler
 import java.util.logging.Logger
 
 open class TorEventHandler(
-        private val torInternalListener: Tor.Listener?,
         private val torMainListener: Tor.Listener?,
         private val connInfo: Tor.ConnectionInfo)
     : EventHandler {
@@ -36,7 +35,6 @@ open class TorEventHandler(
             }
         }
 
-        torInternalListener?.onConnStatusUpdate(connInfo, "ConnectionStatus: ${status}")
         torMainListener?.onConnStatusUpdate(connInfo, "ConnectionStatus: ${status}")
     }
 
@@ -47,8 +45,6 @@ open class TorEventHandler(
     }
 
     override fun circuitStatus(status: String?, circID: String?, path: String?) {
-
-        torInternalListener?.onConnStatusUpdate(connInfo, "CircuitStatus: ${status}")
         torMainListener?.onConnStatusUpdate(connInfo, "CircuitStatus: ${status}")
     }
 
@@ -60,7 +56,6 @@ open class TorEventHandler(
             if (msg.contains("100")) {
                 connInfo.isBootstrapped = true
                 logger.info(logMessage)
-                torInternalListener?.onConnStatusUpdate(connInfo, logMessage)
                 torMainListener?.onConnStatusUpdate(connInfo, logMessage)
             }
         }
