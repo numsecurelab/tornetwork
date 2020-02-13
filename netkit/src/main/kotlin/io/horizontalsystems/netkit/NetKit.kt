@@ -14,8 +14,8 @@ import java.net.URL
 
 class NetKit(private val context: Context, private val torListener: Tor.Listener) {
 
-    private val torNotifManager = NetNotifManager(context)
-    private val torManager = TorManager(context, torNotifManager, torListener)
+    //private val torNotifManager = NetNotifManager(context)
+    private val torManager = TorManager(context, null, torListener)
 
     companion object {
         lateinit var instance: NetKit
@@ -56,7 +56,7 @@ class NetKit(private val context: Context, private val torListener: Tor.Listener
 
         return ConnectionManager.httpURLConnection(
                 url,
-                torManager.torInfo.isStarted,
+                true,//torManager.torInfo.isStarted,
                 TorConstants.IP_LOCALHOST,
                 TorConstants.HTTP_PROXY_PORT_DEFAULT.toInt())
 
@@ -66,7 +66,7 @@ class NetKit(private val context: Context, private val torListener: Tor.Listener
         return ConnectionManager.retrofit(
                 url,
                 timeout,
-                torManager.torInfo.isStarted,
+                false, //torManager.torInfo.isStarted,
                 TorConstants.IP_LOCALHOST,
                 TorConstants.SOCKS_PROXY_PORT_DEFAULT.toInt())
     }

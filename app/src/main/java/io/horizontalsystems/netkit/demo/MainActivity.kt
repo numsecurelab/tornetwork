@@ -1,6 +1,7 @@
 package io.horizontalsystems.netkit.demo
 
 import android.annotation.SuppressLint
+import android.content.Intent
 import android.os.Bundle
 import android.widget.ArrayAdapter
 import androidx.appcompat.app.AppCompatActivity
@@ -21,8 +22,10 @@ import java.io.InputStreamReader
 import java.io.PrintWriter
 import java.net.MalformedURLException
 import java.net.URL
+import kotlin.system.exitProcess
 
 
+@SuppressLint("SetTextI18n")
 class MainActivity : AppCompatActivity(), Tor.Listener {
 
 
@@ -38,8 +41,6 @@ class MainActivity : AppCompatActivity(), Tor.Listener {
     private val disposables = CompositeDisposable()
     private var torStarted: Boolean = false
 
-
-    @SuppressLint("SetTextI18n")
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         setContentView(R.layout.activity_main)
@@ -64,9 +65,14 @@ class MainActivity : AppCompatActivity(), Tor.Listener {
             testTORConnection()
         }
 
+        btnRestartApp.setOnClickListener {
+            finishAffinity()
+            startActivity(Intent(applicationContext, MainActivity::class.java))
+            exitProcess(0)
+        }
+
         adapter = ArrayAdapter(this, android.R.layout.simple_list_item_1, listItems)
         statusView.adapter = adapter
-
     }
 
     override fun onDestroy() {
@@ -111,7 +117,6 @@ class MainActivity : AppCompatActivity(), Tor.Listener {
                                 }))
     }
 
-    @SuppressLint("SetTextI18n")
     private fun testTORConnection() {
 
         txTorTestStatus.text = "Getting IP Address ... "
@@ -121,7 +126,6 @@ class MainActivity : AppCompatActivity(), Tor.Listener {
         // Last IP 185.220.101.29
     }
 
-    @SuppressLint("SetTextI18n")
     private fun getIP() {
 
         val checkIPUrl = "https://api.ipify.org"
@@ -133,14 +137,12 @@ class MainActivity : AppCompatActivity(), Tor.Listener {
 
                 //doHTTPURLConnection(checkIPUrl)
                 doOkHttp3(checkIPUrl)
-                doURL(checkIPUrl)
-                //doRetrofitClient(checkIPUrl)
+                //doURL(checkIPUrl)
+                doRetrofitClient(checkIPUrl)
                 //doSocketConnection(checkIPApiURL)
-
             }
         }.start()
     }
-
 
     override fun onProcessStatusUpdate(torInfo: Tor.Info?, message: String) {
         runOnUiThread {
@@ -161,13 +163,11 @@ class MainActivity : AppCompatActivity(), Tor.Listener {
                 .build()
 
         client.newCall(request).execute()
-                .use({ response ->
-                         txTorTestStatus.text = response.body?.let {
-                             it.charStream().readText()
-                         }
-                     })
-    }
+                .use { response ->
+                    txTorTestStatus.text = response.body?.charStream()!!.readText()
+                }
 
+    }
 
     fun doHTTPURLConnection(url: String) {
 
@@ -185,7 +185,7 @@ class MainActivity : AppCompatActivity(), Tor.Listener {
                 data = isw.read()
                 output += current
             }
-            txTorTestStatus.text = "IP assigned :" + output
+            txTorTestStatus.text = "IP assigned :$output"
 
         } catch (e: Exception) {
             txTorTestStatus.text = e.toString()
@@ -203,7 +203,7 @@ class MainActivity : AppCompatActivity(), Tor.Listener {
 
         disposables.add(
                 obser.getIP("/").subscribeOn(Schedulers.io()).observeOn(AndroidSchedulers.mainThread())
-                        .subscribe({ result -> txTorTestStatus2.text = "IP assigned :" + result },
+                        .subscribe({ result -> txTorTestStatus2.text = "IP assigned :$result" },
                                    { error ->
                                        txTorTestStatus2.text = error.toString()
                                    })
@@ -225,7 +225,7 @@ class MainActivity : AppCompatActivity(), Tor.Listener {
             val port = 80
 
             txTorTestStatus3.text = "Getting IP from socket connection"
-            var socket = netKit.getSocketConnection(hostname, port)
+            val socket = netKit.getSocketConnection(hostname, port)
 
             val output = socket.getOutputStream()
             val writer = PrintWriter(output, true)
@@ -242,8 +242,7 @@ class MainActivity : AppCompatActivity(), Tor.Listener {
             val input = socket.getInputStream()
             val reader = BufferedReader(InputStreamReader(input))
 
-            var line: String = ""
-
+            var line: String
 
             while (reader.readLine().also { line = it } != null) {
                 if (line.contains("{\"ip")) {
@@ -262,11 +261,10 @@ class MainActivity : AppCompatActivity(), Tor.Listener {
         }
     }
 
+    fun doURL(uri: String) {
 
-    fun doURL(uri: String){
-
-        var i: Int = 0
-        var c: Char = '0'
+        var i = 0
+        var c: Char
 
         return URL(uri)
                 .openConnection()
