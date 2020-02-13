@@ -47,7 +47,7 @@ dependencies {
     implementation 'com.eclipsesource.minimal-json:minimal-json:0.9.5'
 
     //Tor
-    api project(':tor')
+    implementation project(':tor')
 
     //  Test helpers
     testImplementation 'org.junit.jupiter:junit-jupiter:5.4.1'
