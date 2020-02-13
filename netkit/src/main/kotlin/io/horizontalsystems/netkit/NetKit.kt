@@ -14,8 +14,8 @@ import java.net.URL
 
 class NetKit(private val context: Context, private val torListener: Tor.Listener) {
 
-    //private val torNotifManager = NetNotifManager(context)
-    private val torManager = TorManager(context, null, torListener)
+    private val torNotifManager = NetNotifManager(context)
+    private val torManager = TorManager(context, torListener)
 
     companion object {
         lateinit var instance: NetKit
@@ -23,6 +23,7 @@ class NetKit(private val context: Context, private val torListener: Tor.Listener
 
     init {
         instance = this
+        torNotifManager.subscribeTo(torManager.torObservable)
     }
 
     fun getInstance(): NetKit {
@@ -32,7 +33,6 @@ class NetKit(private val context: Context, private val torListener: Tor.Listener
     fun startTor(useBridges: Boolean): Observable<Tor.Info> {
 
         enableProxy()
-
         return torManager.start(useBridges)
     }
 
@@ -46,7 +46,7 @@ class NetKit(private val context: Context, private val torListener: Tor.Listener
         return ConnectionManager.socks4aSocketConnection(
                 host,
                 port,
-                torManager.torInfo.isStarted,
+                torManager.getTorInfo().isStarted,
                 TorConstants.IP_LOCALHOST,
                 TorConstants.SOCKS_PROXY_PORT_DEFAULT.toInt())
 
@@ -56,7 +56,7 @@ class NetKit(private val context: Context, private val torListener: Tor.Listener
 
         return ConnectionManager.httpURLConnection(
                 url,
-                true,//torManager.torInfo.isStarted,
+                torManager.getTorInfo().isStarted,
                 TorConstants.IP_LOCALHOST,
                 TorConstants.HTTP_PROXY_PORT_DEFAULT.toInt())
 
@@ -66,7 +66,7 @@ class NetKit(private val context: Context, private val torListener: Tor.Listener
         return ConnectionManager.retrofit(
                 url,
                 timeout,
-                false, //torManager.torInfo.isStarted,
+                torManager.getTorInfo().isStarted,
                 TorConstants.IP_LOCALHOST,
                 TorConstants.SOCKS_PROXY_PORT_DEFAULT.toInt())
     }

@@ -2,10 +2,9 @@ package io.horizontalsystems.tor.core
 
 import io.horizontalsystems.tor.ConnectionStatus
 import io.horizontalsystems.tor.Tor
-import io.reactivex.Flowable
 import io.reactivex.Observable
-import io.reactivex.Single
 import io.reactivex.schedulers.Schedulers
+import io.reactivex.subjects.Subject
 import net.freehaven.tor.control.TorControlConnection
 import java.io.*
 import java.net.Socket
@@ -15,8 +14,8 @@ import java.util.logging.Logger
 class TorControl(
         private val fileControlPort: File,
         private val appCacheHome: File,
-        private val torInternalListener: Tor.Listener?,
-        private val torMainListener: Tor.Listener?) {
+        private val torListener: Tor.Listener?,
+        private val torObservable: Subject<Tor.Info>?) {
 
     private val logger = Logger.getLogger("TorControl")
 
@@ -34,7 +33,7 @@ class TorControl(
 
     fun shutdownTor(): Boolean {
 
-        if(!isConnectedToControl())
+        if (!isConnectedToControl())
             return false
 
         try {
@@ -53,14 +52,17 @@ class TorControl(
         return controlConn != null
     }
 
-    fun initConnection(maxTries: Int, torInfo: Tor.Info): Observable<Tor.ConnectionInfo> {
+    fun initConnection(maxTries: Int, torInfo: Tor.Info): Observable<Tor.Connection> {
+
+        torInfo.connection.status = ConnectionStatus.CONNECTING
+        torObservable?.onNext(torInfo)
 
         return createControlConn(maxTries)
                 .subscribeOn(Schedulers.io())
                 .map {
                     configConnection(it, torInfo)
                 }.onErrorReturn {
-                    Tor.ConnectionInfo(-1)
+                    Tor.Connection(-1)
                 }
     }
 
@@ -94,7 +96,6 @@ class TorControl(
                     emitter.tryOnError(e)
                 }
 
-
                 // Wait for control file creation -> Replace this implementation with RX.
                 //-----------------------------
                 Thread.sleep(100)
@@ -103,7 +104,7 @@ class TorControl(
         }
     }
 
-    private fun configConnection(conn: TorControlConnection, torInfo: Tor.Info): Tor.ConnectionInfo {
+    private fun configConnection(conn: TorControlConnection, torInfo: Tor.Info): Tor.Connection {
 
         try {
 
@@ -119,15 +120,15 @@ class TorControl(
                 val torProcId = conn.getInfo("process/pid")
 
                 torProcessId = torProcId.toInt()
-                torInfo.connectionInfo.processId = torProcessId
+                torInfo.connection.processId = torProcessId
+                torObservable?.onNext(torInfo)
 
-                torInfo.connectionInfo.connectionState = ConnectionStatus.CONNECTING
-                TorEventHandler(torInternalListener, torMainListener, torInfo.connectionInfo).let {
+                TorEventHandler(torListener, torInfo, torObservable).let {
                     torEventHandler = it
                     addEventHandler(conn, it)
                 }
 
-                return torInfo.connectionInfo
+                return torInfo.connection
 
             } else {
                 eventMonitor("Tor authentication cookie does not exist yet")
@@ -135,12 +136,14 @@ class TorControl(
         } catch (e: Exception) {
 
             controlConn = null
-            torProcessId = -1
+            torInfo.connection.processId = -1
+            torInfo.connection.status = ConnectionStatus.FAILED
+            torObservable?.onNext(torInfo)
 
             eventMonitor("Error configuring Tor connection: " + e.localizedMessage)
         }
 
-        return Tor.ConnectionInfo(-1)
+        return Tor.Connection(-1)
     }
 
     fun newIdentity(): Boolean {

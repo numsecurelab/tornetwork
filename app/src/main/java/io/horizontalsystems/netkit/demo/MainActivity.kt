@@ -150,7 +150,7 @@ class MainActivity : AppCompatActivity(), Tor.Listener {
         }
     }
 
-    override fun onConnStatusUpdate(torConnInfo: Tor.ConnectionInfo?, message: String) {
+    override fun onConnStatusUpdate(torConnInfo: Tor.Connection?, message: String) {
         runOnUiThread {
             logEvent("Tor Connection Status:${message}")
         }

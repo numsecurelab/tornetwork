@@ -1,29 +1,28 @@
 package io.horizontalsystems.tor.core
 
 import com.jaredrummler.android.shell.Shell
-import io.horizontalsystems.tor.ConnectionStatus
 import io.horizontalsystems.tor.EntityState
 import io.horizontalsystems.tor.Tor
 import io.horizontalsystems.tor.utils.ProcessUtils
-import io.reactivex.Observable
 import io.reactivex.Single
 import io.reactivex.schedulers.Schedulers
+import io.reactivex.subjects.Subject
 import java.io.File
 import java.util.logging.Level
 import java.util.logging.Logger
 
 class TorOperator(
         private val torSettings: Tor.Settings,
-        private val torInfo: Tor.Info,
-        private val torInternalListener: Tor.Listener?,
-        private val torMainListener: Tor.Listener?) {
+        private val torListener: Tor.Listener?,
+        private val torObservable: Subject<Tor.Info>?) {
 
     private val logger = Logger.getLogger("TorOperator")
+    val torInfo = Tor.Info(Tor.Connection())
 
     private var torControl: TorControl? = null
     private lateinit var resManager: TorResourceManager
 
-    fun start(): Observable<Tor.Info> {
+    fun start(): Subject<Tor.Info> {
 
         try {
 
@@ -34,6 +33,8 @@ class TorOperator(
             if (success) {
 
                 torInfo.isInstalled = true
+                torObservable?.onNext(torInfo)
+
                 eventMonitor(torInfo = torInfo, message = "Tor install success.")
 
                 if (runTorShellCmd(resManager.fileTor, resManager.fileTorrcCustom)) {
@@ -48,27 +49,38 @@ class TorOperator(
                     torControl = TorControl(
                             resManager.fileTorControlPort,
                             torSettings.appDataDir,
-                            torInternalListener,
-                            torMainListener
-                    )
+                            torListener,
+                            torObservable)
 
+                    torInfo.state = EntityState.RUNNING
+                    torObservable?.onNext(torInfo)
                     eventMonitor(torInfo = torInfo, message = "Tor started successfully")
 
                     torControl?.let {
-                        return it.initConnection(4, torInfo).map {
-                            torInfo
-                        }
+                        it.initConnection(4, torInfo)
+                                .subscribe(
+                                        { torConnection ->
+                                            torInfo.connection = torConnection
+                                            torObservable?.onNext(torInfo)
+                                        },
+                                        { error ->
+                                            torInfo.processId = -1
+                                            torObservable?.onNext(torInfo)
+                                        })
+
                     }
                 }
             }
 
         } catch (e: java.lang.Exception) {
             torInfo.processId = -1
+            torObservable?.onNext(torInfo)
+
             eventMonitor(torInfo = torInfo, message = "Error starting Tor")
             eventMonitor(message = e.message.toString())
         }
 
-        return Observable.just(torInfo)
+        return torObservable?.let { it } ?: Subject.just(torInfo) as Subject<Tor.Info>
     }
 
     fun stop(): Single<Boolean> {
@@ -82,15 +94,10 @@ class TorOperator(
     private fun eventMonitor(
             torInfo: Tor.Info? = null,
             logLevel: Level = Level.SEVERE,
-            message: String
-    ) {
+            message: String) {
 
-        torInternalListener?.let {
-            torInternalListener.onProcessStatusUpdate(torInfo, message)
-        }
-
-        torMainListener?.let {
-            torMainListener.onProcessStatusUpdate(torInfo, message)
+        torListener?.let {
+            torListener.onProcessStatusUpdate(torInfo, message)
         }
 
         logger.log(logLevel, message)
@@ -102,14 +109,14 @@ class TorOperator(
         return Single.create { emitter ->
 
             try {
-                var result = torControl?.shutdownTor()?:false
+                var result = torControl?.shutdownTor() ?: false
 
-                if(!result) {
+                if (!result) {
                     result = killTorProcess()
                 }
 
                 torInfo.state = EntityState.STOPPED
-                torInfo.connectionInfo.connectionState = ConnectionStatus.CLOSED
+                torObservable?.onNext(torInfo)
 
                 eventMonitor(torInfo, Level.INFO, "Tor stopped")
                 emitter.onSuccess(result)
@@ -141,7 +148,7 @@ class TorOperator(
                 + " DataDirectory " + appCacheHome.canonicalPath
                 + " --defaults-torrc " + fileTorrc)
 
-        var exitCode:Int
+        var exitCode: Int
 
         exitCode = try {
             exec("$torCmdString --verify-config", true)

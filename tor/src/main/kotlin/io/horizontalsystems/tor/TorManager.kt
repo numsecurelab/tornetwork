@@ -2,17 +2,17 @@ package io.horizontalsystems.tor
 
 import android.content.Context
 import io.horizontalsystems.tor.core.TorOperator
-import io.reactivex.Observable
 import io.reactivex.Single
+import io.reactivex.subjects.PublishSubject
+import io.reactivex.subjects.Subject
 
 class TorManager(
         context: Context,
-        private val torInternalListener: Tor.Listener?,
-        private val torMainListener: Tor.Listener?) {
+        private val torListener: Tor.Listener?) {
 
     private var torSettings: Tor.Settings
-    var torInfo: Tor.Info = Tor.Info(Tor.ConnectionInfo(-1))
     private lateinit var torOperator: TorOperator
+    val torObservable = PublishSubject.create<Tor.Info>()
 
     init {
         tmInstance = this
@@ -28,10 +28,10 @@ class TorManager(
         }
     }
 
-    fun start(useBridges: Boolean): Observable<Tor.Info> {
+    fun start(useBridges: Boolean): Subject<Tor.Info> {
 
         torSettings.useBridges = useBridges
-        torOperator = TorOperator(torSettings, torInfo, torInternalListener, torMainListener)
+        torOperator = TorOperator( torSettings, torListener, torObservable )
 
         return torOperator.start()
     }
@@ -43,4 +43,9 @@ class TorManager(
     fun newIdentity(): Boolean {
         return torOperator.newIdentity()
     }
+
+    fun getTorInfo(): Tor.Info {
+        return torOperator.torInfo
+    }
+
 }

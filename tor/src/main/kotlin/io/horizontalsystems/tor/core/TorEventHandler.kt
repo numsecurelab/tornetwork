@@ -3,13 +3,14 @@ package io.horizontalsystems.tor.core
 import android.text.TextUtils
 import io.horizontalsystems.tor.ConnectionStatus
 import io.horizontalsystems.tor.Tor
+import io.reactivex.subjects.Subject
 import net.freehaven.tor.control.EventHandler
 import java.util.logging.Logger
 
 open class TorEventHandler(
-        private val torInternalListener: Tor.Listener?,
-        private val torMainListener: Tor.Listener?,
-        private val connInfo: Tor.ConnectionInfo)
+        private val torListener: Tor.Listener?,
+        private val torInfo: Tor.Info,
+        private val torObservable: Subject<Tor.Info>?)
     : EventHandler {
 
     private val logger = Logger.getLogger("TorEventHandler")
@@ -24,20 +25,20 @@ open class TorEventHandler(
         status?.let {
 
             if(TextUtils.equals(status, "CONNECTED"))
-                connInfo.connectionState = ConnectionStatus.CONNECTED
+                torInfo.connection.status = ConnectionStatus.CONNECTED
             else if(TextUtils.equals(status, "BUILT")
                 || TextUtils.equals(status, "LAUNCHED")
                 || TextUtils.equals(status, "EXTENDED")
                  ) {
-                connInfo.connectionState = ConnectionStatus.CONNECTING
+                torInfo.connection.status = ConnectionStatus.CONNECTING
 
             } else if(TextUtils.equals(status, "CLOSED")){
-                connInfo.connectionState = ConnectionStatus.CLOSED
+                torInfo.connection.status = ConnectionStatus.CLOSED
             }
         }
-
-        torInternalListener?.onConnStatusUpdate(connInfo, "ConnectionStatus: ${status}")
-        torMainListener?.onConnStatusUpdate(connInfo, "ConnectionStatus: ${status}")
+        logger.info(status)
+        torObservable?.onNext(torInfo)
+        torListener?.onConnStatusUpdate(torInfo.connection, "ConnectionStatus: ${status}")
     }
 
     override fun newDescriptors(orList: MutableList<String>?) {
@@ -47,9 +48,6 @@ open class TorEventHandler(
     }
 
     override fun circuitStatus(status: String?, circID: String?, path: String?) {
-
-        torInternalListener?.onConnStatusUpdate(connInfo, "CircuitStatus: ${status}")
-        torMainListener?.onConnStatusUpdate(connInfo, "CircuitStatus: ${status}")
     }
 
     override fun message(severity: String?, msg: String?) {
@@ -57,11 +55,11 @@ open class TorEventHandler(
 
         msg?.let {
 
-            if (msg.contains("100")) {
-                connInfo.isBootstrapped = true
+            if (msg.contains("100") || msg.contains("Done")) {
+                torInfo.connection.isBootstrapped = true
                 logger.info(logMessage)
-                torInternalListener?.onConnStatusUpdate(connInfo, logMessage)
-                torMainListener?.onConnStatusUpdate(connInfo, logMessage)
+                torObservable?.onNext(torInfo)
+                torListener?.onConnStatusUpdate(torInfo.connection, logMessage)
             }
         }
     }

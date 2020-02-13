@@ -22,6 +22,7 @@ enum class EntityState(val processId: Int) {
 enum class ConnectionStatus {
 
     UNDEFINED,
+    IDLE,
     CLOSED,
     CONNECTING,
     CONNECTED,
@@ -38,13 +39,12 @@ enum class ConnectionStatus {
 
 object Tor {
 
-
-    class Info(val connectionInfo: ConnectionInfo) {
+    class Info(var connection: Connection) {
 
         var processId: Int
-            get() = connectionInfo.processId
+            get() = connection.processId
             set(value) {
-                connectionInfo.processId = value
+                connection.processId = value
             }
 
         var isInstalled: Boolean = false
@@ -53,35 +53,41 @@ object Tor {
             get() = EntityState.getByProcessId(processId)
             set(value) {
                 processId = value.processId
+
+                if (value == EntityState.STOPPED)
+                    connection.status = ConnectionStatus.CLOSED
             }
 
         val isStarted: Boolean
-            get() = connectionInfo.processId > 0
+            get() = connection.processId > 0
     }
 
-    class ConnectionInfo(processIdArg: Int = -1) {
+    class Connection(processIdArg: Int = -1) {
 
         var processId: Int = processIdArg
         var proxyHost = TorConstants.IP_LOCALHOST
         var proxySocksPort = TorConstants.SOCKS_PROXY_PORT_DEFAULT
         var proxyHttpPort = TorConstants.HTTP_PROXY_PORT_DEFAULT
         var isBootstrapped: Boolean = false
-        var connectionState = ConnectionStatus.CLOSED
+        var status = ConnectionStatus.CLOSED
 
-        fun getConnectionStatus(): ConnectionStatus {
+        fun getState(): ConnectionStatus {
 
-            if (connectionState == ConnectionStatus.CONNECTED && isBootstrapped)
-                return ConnectionStatus.CONNECTED
+            return if (status == ConnectionStatus.CONNECTED ){
+
+                if(isBootstrapped)
+                    ConnectionStatus.CONNECTED
+                else
+                    ConnectionStatus.CONNECTING
+            }
             else {
 
-                if (connectionState == ConnectionStatus.CONNECTING)
-                    return ConnectionStatus.CONNECTING
+                if (status == ConnectionStatus.CONNECTING)
+                    ConnectionStatus.CONNECTING
                 else
-                    return ConnectionStatus.CLOSED
+                    ConnectionStatus.CLOSED
             }
         }
-
-
     }
 
 
@@ -110,7 +116,7 @@ object Tor {
     }
 
     interface Listener {
-        fun onProcessStatusUpdate(torInfo: Tor.Info?, message: String)
-        fun onConnStatusUpdate(torConnInfo: Tor.ConnectionInfo?, message: String)
+        fun onProcessStatusUpdate(torInfo: Info?, message: String)
+        fun onConnStatusUpdate(torConnInfo: Connection?, message: String)
     }
 }
