@@ -20,8 +20,8 @@ class TorOperator(
 
     private val logger = Logger.getLogger("TorOperator")
 
-    lateinit var torControl: TorControl
-    lateinit var resManager: TorResourceManager
+    private var torControl: TorControl? = null
+    private lateinit var resManager: TorResourceManager
 
     fun start(): Observable<Tor.Info> {
 
@@ -49,12 +49,15 @@ class TorOperator(
                             resManager.fileTorControlPort,
                             torSettings.appDataDir,
                             torInternalListener,
-                            torMainListener)
+                            torMainListener
+                    )
 
                     eventMonitor(torInfo = torInfo, message = "Tor started successfully")
 
-                    return torControl.initConnection(4, torInfo).map {
-                        torInfo
+                    torControl?.let {
+                        return it.initConnection(4, torInfo).map {
+                            torInfo
+                        }
                     }
                 }
             }
@@ -73,10 +76,14 @@ class TorOperator(
     }
 
     fun newIdentity(): Boolean {
-        return torControl.newIdentity()
+        return torControl?.newIdentity() ?: false
     }
 
-    private fun eventMonitor(torInfo: Tor.Info? = null, logLevel: Level = Level.SEVERE, message: String) {
+    private fun eventMonitor(
+            torInfo: Tor.Info? = null,
+            logLevel: Level = Level.SEVERE,
+            message: String
+    ) {
 
         torInternalListener?.let {
             torInternalListener.onProcessStatusUpdate(torInfo, message)
@@ -92,28 +99,28 @@ class TorOperator(
     @Throws(java.lang.Exception::class)
     private fun killAllDaemons(): Single<Boolean> {
 
-        return Single.create{ emitter ->
+        return Single.create { emitter ->
 
             try {
+                var result = torControl?.shutdownTor()?:false
 
-                if (torControl.isConnectedToControl()) {
-                    emitter.onSuccess(torControl.shutdownTor())
-                } else {
-                    emitter.onSuccess(killTorProcess())
+                if(!result) {
+                    result = killTorProcess()
                 }
 
                 torInfo.state = EntityState.STOPPED
                 torInfo.connectionInfo.connectionState = ConnectionStatus.CLOSED
 
                 eventMonitor(torInfo, Level.INFO, "Tor stopped")
-            }
-            catch (e: java.lang.Exception){
+                emitter.onSuccess(result)
+
+            } catch (e: java.lang.Exception) {
                 emitter.onError(e)
             }
         }
     }
 
-    private fun killTorProcess(): Boolean{
+    private fun killTorProcess(): Boolean {
         try {
             ProcessUtils.killProcess(resManager.fileTor, "-9") // this is -HUP
             return true
@@ -133,23 +140,33 @@ class TorOperator(
         val torCmdString = (fileTor.canonicalPath
                 + " DataDirectory " + appCacheHome.canonicalPath
                 + " --defaults-torrc " + fileTorrc)
-        var exitCode = -1
+
+        var exitCode:Int
+
         exitCode = try {
             exec("$torCmdString --verify-config", true)
         } catch (e: Exception) {
             eventMonitor(message = "Tor configuration did not verify: " + e.message + e)
             return false
         }
+
+        if (exitCode != 0) {
+            eventMonitor(message = "Tor configuration did not verify:$exitCode")
+            return false
+        }
+
         exitCode = try {
             exec(torCmdString, true)
         } catch (e: Exception) {
             eventMonitor(message = "Tor was unable to start: " + e.message + e)
             return false
         }
+
         if (exitCode != 0) {
             eventMonitor(message = "Tor did not start. Exit:$exitCode")
             return false
         }
+
         return true
     }
 

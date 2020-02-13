@@ -34,6 +34,9 @@ class TorControl(
 
     fun shutdownTor(): Boolean {
 
+        if(!isConnectedToControl())
+            return false
+
         try {
             controlConn?.let {
                 it.shutdownTor("HALT")

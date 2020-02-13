@@ -30,7 +30,6 @@ class TorResourceManager(private val torSettings: Tor.Settings) {
         if(!torSettings.appDataDir.exists())
             torSettings.appDataDir.mkdirs()
 
-        fileTor = File(torSettings.appFilesDir, TorConstants.TORRC_ASSET_KEY)
         fileTorControlPort = File(torSettings.appFilesDir, TorConstants.TOR_CONTROL_PORT_FILE)
 
         installGeoIP()
@@ -76,7 +75,8 @@ class TorResourceManager(private val torSettings: Tor.Settings) {
                 if (fileTor.exists() && fileTor.canExecute()) {
                     fileTor = it
                     fileTor
-                } else null
+                } else
+                    null
             }
         }
 
