@@ -27,16 +27,17 @@ open class TorEventHandler(
             if(TextUtils.equals(status, "CONNECTED"))
                 torInfo.connection.status = ConnectionStatus.CONNECTED
             else if(TextUtils.equals(status, "BUILT")
-                || TextUtils.equals(status, "LAUNCHED")
+                //|| TextUtils.equals(status, "LAUNCHED")
                 || TextUtils.equals(status, "EXTENDED")
                  ) {
                 torInfo.connection.status = ConnectionStatus.CONNECTING
 
-            } else if(TextUtils.equals(status, "CLOSED")){
+            } else if(TextUtils.equals(status, "CLOSED")|| TextUtils.equals(status, "FAILED")){
                 torInfo.connection.status = ConnectionStatus.CLOSED
             }
         }
-        logger.info(status)
+
+        logger.info("Connection Status:${status}")
         torObservable?.onNext(torInfo)
         torListener?.onConnStatusUpdate(torInfo.connection, "ConnectionStatus: ${status}")
     }

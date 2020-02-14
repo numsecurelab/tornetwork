@@ -17,6 +17,10 @@ enum class EntityState(val processId: Int) {
                     .find { it.processId == procId } ?: RUNNING
         }
     }
+
+    override fun toString(): String {
+        return this.name
+    }
 }
 
 enum class ConnectionStatus {
@@ -34,6 +38,10 @@ enum class ConnectionStatus {
             return values()
                     .find { it.name.contentEquals(typName.toUpperCase()) } ?: CLOSED
         }
+    }
+
+    override fun toString(): String {
+        return this.name
     }
 }
 
