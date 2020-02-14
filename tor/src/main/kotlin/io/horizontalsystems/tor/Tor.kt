@@ -90,29 +90,12 @@ object Tor {
         }
     }
 
-
     class Settings(var context: Context) {
-
-        constructor(context: Context, vpnMode: Boolean, useBridges: Boolean) : this(context) {
-            this.context = context
-            this.vpnMode = vpnMode
-            this.useBridges = useBridges
-        }
-
-        var appFilesDir: File
-        var appDataDir: File
-        var appNativeDir: File
-        var appSourceDir: File
-
-        var vpnMode: Boolean = false
+        var appFilesDir: File = context.filesDir
+        var appDataDir: File = context.getDir(TorConstants.DIRECTORY_TOR_DATA, Application.MODE_PRIVATE)
+        var appNativeDir: File = File(context.applicationInfo.nativeLibraryDir)
+        var appSourceDir: File = File(context.applicationInfo.sourceDir)
         var useBridges: Boolean = false
-
-        init {
-            appFilesDir = context.filesDir
-            appDataDir = context.getDir(TorConstants.DIRECTORY_TOR_DATA, Application.MODE_PRIVATE)
-            appNativeDir = File(context.applicationInfo.nativeLibraryDir)
-            appSourceDir = File(context.applicationInfo.sourceDir)
-        }
     }
 
     interface Listener {

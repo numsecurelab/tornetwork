@@ -90,15 +90,16 @@ class MainActivity : AppCompatActivity(), Tor.Listener {
 
     private fun stopTor() {
         disposables.add(
-                netKit.stopTor()
-                        .observeOn(AndroidSchedulers.mainThread())
-                        .subscribe(
-                                { torStopped ->
-                                    logEvent("Tor stopped:${torStopped}")
-                                },
-                                { error ->
-                                    logEvent("TorError:${error}")
-                                }))
+            netKit.stopTor()
+                .observeOn(AndroidSchedulers.mainThread())
+                .subscribe(
+                    { torStopped ->
+                        logEvent("Tor stopped:${torStopped}")
+                    },
+                    { error ->
+                        logEvent("TorError:${error}")
+                    })
+        )
 
     }
 
@@ -106,15 +107,16 @@ class MainActivity : AppCompatActivity(), Tor.Listener {
     private fun startTor() {
 
         disposables.add(
-                netKit.startTor(useBridges = false)
-                        .observeOn(AndroidSchedulers.mainThread())
-                        .subscribe(
-                                { netStatus ->
-                                    logEvent("Tor Process ID:${netStatus.processId}")
-                                },
-                                { error ->
-                                    logEvent("TorError:${error}")
-                                }))
+            netKit.startTor(useBridges = false)
+                .observeOn(AndroidSchedulers.mainThread())
+                .subscribe(
+                    { netStatus ->
+                        logEvent("Tor Process ID:${netStatus.processId}")
+                    },
+                    { error ->
+                        logEvent("TorError:${error}")
+                    })
+        )
     }
 
     private fun testTORConnection() {
@@ -129,7 +131,8 @@ class MainActivity : AppCompatActivity(), Tor.Listener {
     private fun getIP() {
 
         val checkIPUrl = "https://api.ipify.org"
-        val checkIPApiURL = "http://api.ipapi.com/api/check?access_key=d786e103047a3510ba0d8bb0d9a92b02&fields=ip"
+        val checkIPApiURL =
+            "http://api.ipapi.com/api/check?access_key=d786e103047a3510ba0d8bb0d9a92b02&fields=ip"
 
 
         object : Thread() {
@@ -159,13 +162,13 @@ class MainActivity : AppCompatActivity(), Tor.Listener {
     fun doOkHttp3(url: String) {
         val client = OkHttpClient()
         val request: Request = Request.Builder()
-                .url(url)
-                .build()
+            .url(url)
+            .build()
 
         client.newCall(request).execute()
-                .use { response ->
-                    txTorTestStatus.text = response.body?.charStream()!!.readText()
-                }
+            .use { response ->
+                txTorTestStatus.text = response.body?.charStream()!!.readText()
+            }
 
     }
 
@@ -202,11 +205,11 @@ class MainActivity : AppCompatActivity(), Tor.Listener {
         val obser = retroFitClient.create(GetIPApi::class.java)
 
         disposables.add(
-                obser.getIP("/").subscribeOn(Schedulers.io()).observeOn(AndroidSchedulers.mainThread())
-                        .subscribe({ result -> txTorTestStatus2.text = "IP assigned :$result" },
-                                   { error ->
-                                       txTorTestStatus2.text = error.toString()
-                                   })
+            obser.getIP("/").subscribeOn(Schedulers.io()).observeOn(AndroidSchedulers.mainThread())
+                .subscribe({ result -> txTorTestStatus2.text = "IP assigned :$result" },
+                    { error ->
+                        txTorTestStatus2.text = error.toString()
+                    })
         )
     }
 
@@ -267,24 +270,24 @@ class MainActivity : AppCompatActivity(), Tor.Listener {
         var c: Char
 
         return URL(uri)
-                .openConnection()
-                .apply {
-                    connectTimeout = 5000
-                    readTimeout = 60000
-                    setRequestProperty("Accept", "text/plain")
-                }
-                .getInputStream()
-                .use {
+            .openConnection()
+            .apply {
+                connectTimeout = 5000
+                readTimeout = 60000
+                setRequestProperty("Accept", "text/plain")
+            }
+            .getInputStream()
+            .use {
 
-                    var out: String = ""
-                    while (it.read().also({ i = it }) !== -1) {
-                        c = i.toChar()
-                        // prints character
-                        out = out + c
-                    }
-                    txTorTestStatus2.text = out
-
+                var out: String = ""
+                while (it.read().also({ i = it }) !== -1) {
+                    c = i.toChar()
+                    // prints character
+                    out = out + c
                 }
+                txTorTestStatus2.text = out
+
+            }
     }
 
 }

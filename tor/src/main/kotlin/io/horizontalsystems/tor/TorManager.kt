@@ -10,23 +10,9 @@ class TorManager(
         context: Context,
         private val torListener: Tor.Listener?) {
 
-    private var torSettings: Tor.Settings
+    private var torSettings: Tor.Settings = Tor.Settings(context)
     private lateinit var torOperator: TorOperator
     val torObservable = PublishSubject.create<Tor.Info>()
-
-    init {
-        tmInstance = this
-        torSettings = Tor.Settings(context)
-    }
-
-    companion object {
-
-        lateinit var tmInstance: TorManager
-
-        fun getInstance(): TorManager {
-            return tmInstance
-        }
-    }
 
     fun start(useBridges: Boolean): Subject<Tor.Info> {
 

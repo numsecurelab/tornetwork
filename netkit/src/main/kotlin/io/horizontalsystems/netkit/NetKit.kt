@@ -7,38 +7,33 @@ import io.horizontalsystems.tor.TorManager
 import io.horizontalsystems.tor.core.TorConstants
 import io.reactivex.Observable
 import io.reactivex.Single
+import io.reactivex.disposables.Disposable
 import retrofit2.Retrofit
 import java.net.HttpURLConnection
 import java.net.Socket
 import java.net.URL
 
-class NetKit(private val context: Context, private val torListener: Tor.Listener) {
+class NetKit(context: Context, torListener: Tor.Listener? = null) {
 
-    private val torNotifManager = NetNotifManager(context)
+    private val torNotificationManager = NetNotificationManager(context)
     private val torManager = TorManager(context, torListener)
+    private var disposable: Disposable? = null
 
-    companion object {
-        lateinit var instance: NetKit
-    }
-
-    init {
-        instance = this
-        torNotifManager.subscribeTo(torManager.torObservable)
-    }
-
-    fun getInstance(): NetKit {
-        return instance
-    }
 
     fun startTor(useBridges: Boolean): Observable<Tor.Info> {
-
         enableProxy()
+        disposable = torManager.torObservable.subscribe({
+            torNotificationManager.updateNotification(it)
+        },{
+
+        })
         return torManager.start(useBridges)
     }
 
     fun stopTor(): Single<Boolean> {
         disableProxy()
-
+        disposable?.dispose()
+        torNotificationManager.closeNotification()
         return torManager.stop()
     }
 

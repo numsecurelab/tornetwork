@@ -36,8 +36,12 @@ object ConnectionManager {
     }
 
     @Throws(IOException::class)
-    fun socks4aSocketConnection(networkHost: String, networkPort: Int, useProxy: Boolean, proxyHost: String = "",
-                                proxyPort: Int = 0
+    fun socks4aSocketConnection(
+        networkHost: String,
+        networkPort: Int,
+        useProxy: Boolean,
+        proxyHost: String = "",
+        proxyPort: Int = 0
     ): Socket {
 
         val socket = Socket()
@@ -62,9 +66,9 @@ object ConnectionManager {
         if (firstByte != 0x00.toByte() || secondByte != 0x5a.toByte()) {
             socket.close()
             throw IOException(
-                    "SOCKS4a connect failed, got " + firstByte + " - " + secondByte +
-                            ", but expected 0x00 - 0x5a:, networkHost= " + networkHost + ", networkPort = " + networkPort
-                            + ", socksHost=" + proxyHost + ",socksPort=" + proxyPort
+                "SOCKS4a connect failed, got " + firstByte + " - " + secondByte +
+                        ", but expected 0x00 - 0x5a:, networkHost= " + networkHost + ", networkPort = " + networkPort
+                        + ", socksHost=" + proxyHost + ",socksPort=" + proxyPort
             )
         }
         inputStream.readShort()
@@ -73,7 +77,11 @@ object ConnectionManager {
         return socket
     }
 
-    fun httpURLConnection(url: URL, useProxy: Boolean, proxyHost: String = "", proxyPort: Int = 0
+    fun httpURLConnection(
+        url: URL,
+        useProxy: Boolean,
+        proxyHost: String = "",
+        proxyPort: Int = 0
     ): HttpURLConnection {
 
         if (useProxy) {
@@ -84,7 +92,12 @@ object ConnectionManager {
     }
 
 
-    fun setSystemProxy(userSystemProxy: Boolean, host: String, httpPort: String, socksPort: String) {
+    fun setSystemProxy(
+        userSystemProxy: Boolean,
+        host: String,
+        httpPort: String,
+        socksPort: String
+    ) {
 
         System.setProperty(ProxyEnvVar.USE_SYSTEM_PROXIES.value, userSystemProxy.toString());
         System.setProperty(ProxyEnvVar.HTTP_PROXY_HOST.value, host)
@@ -105,8 +118,13 @@ object ConnectionManager {
         System.clearProperty(ProxyEnvVar.SOCKS_PROXY_PORT.value)
     }
 
-    fun retrofit(apiURL: String, timeout: Long = 60, useProxy: Boolean = false, proxyHost: String = "",
-                 proxyPort: Int = 0): Retrofit {
+    fun retrofit(
+        apiURL: String,
+        timeout: Long = 60,
+        useProxy: Boolean = false,
+        proxyHost: String = "",
+        proxyPort: Int = 0
+    ): Retrofit {
 
         val logger = HttpLoggingInterceptor().apply {
             level = HttpLoggingInterceptor.Level.BASIC
@@ -125,11 +143,11 @@ object ConnectionManager {
         val gsonBuilder = GsonBuilder().setLenient()
 
         return Retrofit.Builder()
-                .baseUrl(apiURL)
-                .addCallAdapterFactory(RxJava2CallAdapterFactory.create())
-                .addConverterFactory(GsonConverterFactory.create(gsonBuilder.create()))
-                .client(httpClient.build())
-                .build()
+            .baseUrl(apiURL)
+            .addCallAdapterFactory(RxJava2CallAdapterFactory.create())
+            .addConverterFactory(GsonConverterFactory.create(gsonBuilder.create()))
+            .client(httpClient.build())
+            .build()
     }
 
 }
