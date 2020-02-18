@@ -50,20 +50,21 @@ class TorOperator(
                             resManager.fileTorControlPort,
                             torSettings.appDataDir,
                             torListener,
-                            torObservable)
+                            torObservable,
+                            torInfo)
 
                     torInfo.state = EntityState.RUNNING
                     torObservable?.onNext(torInfo)
                     eventMonitor(torInfo = torInfo, message = "Tor started successfully")
 
                     torControl?.let {
-                        it.initConnection(4, torInfo)
+                        it.initConnection(4)
                                 .subscribe(
                                         { torConnection ->
                                             torInfo.connection = torConnection
                                             torObservable?.onNext(torInfo)
                                         },
-                                        { error ->
+                                        {
                                             torInfo.processId = -1
                                             torObservable?.onNext(torInfo)
                                         })

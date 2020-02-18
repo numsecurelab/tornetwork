@@ -14,7 +14,7 @@ enum class EntityState(val processId: Int) {
 
         fun getByProcessId(procId: Int): EntityState {
             return values()
-                    .find { it.processId == procId } ?: RUNNING
+                .find { it.processId == procId } ?: RUNNING
         }
     }
 
@@ -36,7 +36,7 @@ enum class ConnectionStatus {
 
         fun getByName(typName: String): ConnectionStatus {
             return values()
-                    .find { it.name.contentEquals(typName.toUpperCase()) } ?: CLOSED
+                .find { it.name.contentEquals(typName.toUpperCase()) } ?: CLOSED
         }
     }
 
@@ -62,8 +62,8 @@ object Tor {
             set(value) {
                 processId = value.processId
 
-                if (value == EntityState.STOPPED)
-                    connection.status = ConnectionStatus.CLOSED
+                if(value == EntityState.STOPPED)
+                    connection.isBootstrapped = false
             }
 
         val isStarted: Boolean
@@ -77,24 +77,23 @@ object Tor {
         var proxySocksPort = TorConstants.SOCKS_PROXY_PORT_DEFAULT
         var proxyHttpPort = TorConstants.HTTP_PROXY_PORT_DEFAULT
         var isBootstrapped: Boolean = false
-        var status = ConnectionStatus.CLOSED
+        var status: ConnectionStatus
+            get() {
+                return if (processId > 0) {
 
-        fun getState(): ConnectionStatus {
-
-            return if (status == ConnectionStatus.CONNECTED ){
-
-                if(isBootstrapped)
-                    ConnectionStatus.CONNECTED
-                else
-                    ConnectionStatus.CONNECTING
-            }
-            else {
-
-                if (status == ConnectionStatus.CONNECTING)
-                    ConnectionStatus.CONNECTING
-                else
+                    if (isBootstrapped)
+                        ConnectionStatus.CONNECTED
+                    else
+                        ConnectionStatus.CONNECTING
+                } else {
                     ConnectionStatus.CLOSED
+                }
             }
+        set(value) {
+            if(value == ConnectionStatus.CONNECTED)
+                isBootstrapped = true
+            else if(value == ConnectionStatus.FAILED)
+                isBootstrapped = false
         }
     }
 

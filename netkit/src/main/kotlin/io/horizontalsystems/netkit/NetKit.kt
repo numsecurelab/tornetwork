@@ -41,7 +41,7 @@ class NetKit(context: Context, torListener: Tor.Listener? = null) {
         return ConnectionManager.socks4aSocketConnection(
                 host,
                 port,
-                torManager.getTorInfo().isStarted,
+                false,//torManager.getTorInfo().isStarted,
                 TorConstants.IP_LOCALHOST,
                 TorConstants.SOCKS_PROXY_PORT_DEFAULT.toInt())
 
@@ -51,7 +51,7 @@ class NetKit(context: Context, torListener: Tor.Listener? = null) {
 
         return ConnectionManager.httpURLConnection(
                 url,
-                torManager.getTorInfo().isStarted,
+                false,//torManager.getTorInfo().isStarted,
                 TorConstants.IP_LOCALHOST,
                 TorConstants.HTTP_PROXY_PORT_DEFAULT.toInt())
 
@@ -61,7 +61,7 @@ class NetKit(context: Context, torListener: Tor.Listener? = null) {
         return ConnectionManager.retrofit(
                 url,
                 timeout,
-                torManager.getTorInfo().isStarted,
+                false,//torManager.getTorInfo().isStarted,
                 TorConstants.IP_LOCALHOST,
                 TorConstants.SOCKS_PROXY_PORT_DEFAULT.toInt())
     }

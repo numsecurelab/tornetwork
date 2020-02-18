@@ -142,7 +142,7 @@ class MainActivity : AppCompatActivity(), Tor.Listener {
                 doOkHttp3(checkIPUrl)
                 //doURL(checkIPUrl)
                 doRetrofitClient(checkIPUrl)
-                //doSocketConnection(checkIPApiURL)
+                doSocketConnection(checkIPApiURL)
             }
         }.start()
     }
@@ -206,10 +206,10 @@ class MainActivity : AppCompatActivity(), Tor.Listener {
 
         disposables.add(
             obser.getIP("/").subscribeOn(Schedulers.io()).observeOn(AndroidSchedulers.mainThread())
-                .subscribe({ result -> txTorTestStatus2.text = "IP assigned :$result" },
-                    { error ->
-                        txTorTestStatus2.text = error.toString()
-                    })
+                    .subscribe({ result -> txTorTestStatus2.text = "IP assigned :$result" },
+                               { error ->
+                                   txTorTestStatus2.text = error.toString()
+                               })
         )
     }
 

@@ -1,6 +1,5 @@
 package io.horizontalsystems.tor.core
 
-import io.horizontalsystems.tor.ConnectionStatus
 import io.horizontalsystems.tor.Tor
 import io.reactivex.Observable
 import io.reactivex.schedulers.Schedulers
@@ -14,16 +13,24 @@ import java.util.logging.Logger
 class TorControl(
         private val fileControlPort: File,
         private val appCacheHome: File,
-        private val torListener: Tor.Listener?,
-        private val torObservable: Subject<Tor.Info>?) {
+        val torListener: Tor.Listener?,
+        val torObservable: Subject<Tor.Info>?,
+        val torInfo: Tor.Info) {
 
     private val logger = Logger.getLogger("TorControl")
 
     private val CONTROL_SOCKET_TIMEOUT = 60000
     private var controlConn: TorControlConnection? = null
     private var torEventHandler: TorEventHandler? = null
+    private var torProcessId: Int = -1
 
-    var torProcessId: Int = -1
+    companion object {
+        lateinit var instance: TorControl
+    }
+
+    init {
+        instance = this
+    }
 
     private fun eventMonitor(msg: String?) {
         msg?.let {
@@ -48,13 +55,13 @@ class TorControl(
         return false
     }
 
-    fun isConnectedToControl(): Boolean {
+    private fun isConnectedToControl(): Boolean {
         return controlConn != null
     }
 
-    fun initConnection(maxTries: Int, torInfo: Tor.Info): Observable<Tor.Connection> {
+    fun initConnection(maxTries: Int): Observable<Tor.Connection> {
 
-        torInfo.connection.status = ConnectionStatus.CONNECTING
+        torInfo.connection.isBootstrapped = false
         torObservable?.onNext(torInfo)
 
         return createControlConn(maxTries)
@@ -123,7 +130,7 @@ class TorControl(
                 torInfo.connection.processId = torProcessId
                 torObservable?.onNext(torInfo)
 
-                TorEventHandler(torListener, torInfo, torObservable).let {
+                TorEventHandler().let {
                     torEventHandler = it
                     addEventHandler(conn, it)
                 }
@@ -137,7 +144,7 @@ class TorControl(
 
             controlConn = null
             torInfo.connection.processId = -1
-            torInfo.connection.status = ConnectionStatus.FAILED
+            torInfo.connection.isBootstrapped = false
             torObservable?.onNext(torInfo)
 
             eventMonitor("Error configuring Tor connection: " + e.localizedMessage)
@@ -156,26 +163,43 @@ class TorControl(
     }
 
     @Synchronized
-    fun isBootstrapped(): Boolean {
+    fun onBootstrapped(torInfo: Tor.Info) {
+        if (!torInfo.connection.isBootstrapped) {
+            Thread(Runnable {
+                var isSuccess = isBootstrapped()
+
+                while (isSuccess == 0) {
+                    Thread.sleep(900)
+                    isSuccess = isBootstrapped()
+                }
+
+                torInfo.connection.isBootstrapped = (isSuccess == 1)
+                torObservable?.onNext(torInfo)
+
+            }).start()
+        }
+    }
+
+    @Synchronized
+    fun isBootstrapped(): Int {
 
         controlConn?.let {
 
             try {
-                var phase: String? = null
-
-                phase = it.getInfo("status/bootstrap-phase")
-
+                val phase: String? = it.getInfo("status/bootstrap-phase")
                 if (phase != null && phase.contains("PROGRESS=100")) {
                     eventMonitor("Tor has already bootstrapped")
-                    return true
+                    return 1
                 }
+                else
+                    return 0
 
             } catch (e: IOException) {
-                eventMonitor("Control connection is not responding properly to getInfo:" + e)
+                eventMonitor("Control connection is not responding properly to getInfo:${e}")
             }
         }
 
-        return false
+        return -1
     }
 
     private fun getControlPort(): Int {

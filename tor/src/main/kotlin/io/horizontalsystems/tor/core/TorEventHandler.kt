@@ -2,16 +2,12 @@ package io.horizontalsystems.tor.core
 
 import android.text.TextUtils
 import io.horizontalsystems.tor.ConnectionStatus
-import io.horizontalsystems.tor.Tor
-import io.reactivex.subjects.Subject
 import net.freehaven.tor.control.EventHandler
 import java.util.logging.Logger
 
-open class TorEventHandler(
-        private val torListener: Tor.Listener?,
-        private val torInfo: Tor.Info,
-        private val torObservable: Subject<Tor.Info>?)
-    : EventHandler {
+open class TorEventHandler : EventHandler {
+
+    private var torControl : TorControl = TorControl.instance
 
     private val logger = Logger.getLogger("TorEventHandler")
 
@@ -19,27 +15,26 @@ open class TorEventHandler(
     }
 
     override fun bandwidthUsed(read: Long, written: Long) {
+        //logger.info("BandwidthUsed:${read},${written}")
     }
 
     override fun orConnStatus(status: String?, orName: String?) {
         status?.let {
 
             if(TextUtils.equals(status, "CONNECTED"))
-                torInfo.connection.status = ConnectionStatus.CONNECTED
-            else if(TextUtils.equals(status, "BUILT")
-                //|| TextUtils.equals(status, "LAUNCHED")
-                || TextUtils.equals(status, "EXTENDED")
-                 ) {
-                torInfo.connection.status = ConnectionStatus.CONNECTING
-
-            } else if(TextUtils.equals(status, "CLOSED")|| TextUtils.equals(status, "FAILED")){
-                torInfo.connection.status = ConnectionStatus.CLOSED
+            {
+                torControl.onBootstrapped(torControl.torInfo)
+            }
+            else if(TextUtils.equals(status, "FAILED")) {
+                //Thread(Runnable {
+                    torControl.torInfo.connection.status = ConnectionStatus.FAILED
+                    torControl.torObservable?.onNext(torControl.torInfo)
+                    torControl.torListener?.onConnStatusUpdate(torControl.torInfo.connection, "ConnectionStatus: ${status}")
+                //}).start()
             }
         }
 
         logger.info("Connection Status:${status}")
-        torObservable?.onNext(torInfo)
-        torListener?.onConnStatusUpdate(torInfo.connection, "ConnectionStatus: ${status}")
     }
 
     override fun newDescriptors(orList: MutableList<String>?) {
@@ -53,15 +48,6 @@ open class TorEventHandler(
 
     override fun message(severity: String?, msg: String?) {
         val logMessage = "Message:${msg}"
-
-        msg?.let {
-
-            if (msg.contains("100") || msg.contains("Done")) {
-                torInfo.connection.isBootstrapped = true
-                logger.info(logMessage)
-                torObservable?.onNext(torInfo)
-                torListener?.onConnStatusUpdate(torInfo.connection, logMessage)
-            }
-        }
+        logger.info(logMessage)
     }
 }

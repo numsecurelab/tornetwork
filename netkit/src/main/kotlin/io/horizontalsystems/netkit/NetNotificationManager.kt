@@ -44,13 +44,13 @@ class NetNotificationManager(private val context: Context) {
                 else -> "Tor: Stopped"
             }
 
-            icon = when (it.connection.getState()) {
+            icon = when (it.connection.status) {
                 ConnectionStatus.CONNECTING -> iconConnecting
                 ConnectionStatus.CONNECTED -> iconConnected
                 else -> iconError
             }
 
-            content = when (it.connection.getState()) {
+            content = when (it.connection.status) {
                 ConnectionStatus.CONNECTING -> "Connecting ... "
                 ConnectionStatus.CONNECTED -> "Successfully Connected !"
                 else -> "Disconnected"
