@@ -50,18 +50,24 @@ object ProcessUtils {
         var procId = -1
         var killAttempts = 0
         while (findProcessId(fileProcBin.canonicalPath).also { procId = it } != -1) {
+
             killAttempts++
             val pidString = procId.toString()
+
             try {
                 Runtime.getRuntime().exec("busybox killall " + signal + " " + fileProcBin.name)
             } catch (ioe: IOException) {
             }
+
             killProcess(pidString, signal)
+
             try {
                 Thread.sleep(1000)
             } catch (e: InterruptedException) { // ignored
             }
-            if (killAttempts > 4) throw Exception("Cannot kill: " + fileProcBin.absolutePath)
+
+            if (killAttempts > 4)
+                throw Exception("Cannot kill: " + fileProcBin.absolutePath)
         }
     }
 

@@ -6,7 +6,6 @@ import android.os.Bundle
 import android.widget.ArrayAdapter
 import androidx.appcompat.app.AppCompatActivity
 import io.horizontalsystems.netkit.NetKit
-import io.horizontalsystems.tor.Tor
 import io.reactivex.Flowable
 import io.reactivex.android.schedulers.AndroidSchedulers
 import io.reactivex.disposables.CompositeDisposable
@@ -26,7 +25,7 @@ import kotlin.system.exitProcess
 
 
 @SuppressLint("SetTextI18n")
-class MainActivity : AppCompatActivity(), Tor.Listener {
+class MainActivity : AppCompatActivity(){
 
 
     interface GetIPApi {
@@ -46,7 +45,7 @@ class MainActivity : AppCompatActivity(), Tor.Listener {
         setContentView(R.layout.activity_main)
 
         //------------Init NetKit -------------------
-        netKit = NetKit(context = applicationContext, torListener = this)
+        netKit = NetKit(context = applicationContext)
         //-------------------------------------------
 
         btnTor.setOnClickListener {
@@ -111,7 +110,9 @@ class MainActivity : AppCompatActivity(), Tor.Listener {
                 .observeOn(AndroidSchedulers.mainThread())
                 .subscribe(
                     { netStatus ->
-                        logEvent("Tor Process ID:${netStatus.processId}")
+                        netStatus.statusMessage?.let {
+                            logEvent("${netStatus.statusMessage}")
+                        }
                     },
                     { error ->
                         logEvent("TorError:${error}")
@@ -145,18 +146,6 @@ class MainActivity : AppCompatActivity(), Tor.Listener {
                 doSocketConnection(checkIPApiURL)
             }
         }.start()
-    }
-
-    override fun onProcessStatusUpdate(torInfo: Tor.Info?, message: String) {
-        runOnUiThread {
-            logEvent("Tor Status:${message}")
-        }
-    }
-
-    override fun onConnStatusUpdate(torConnInfo: Tor.Connection?, message: String) {
-        runOnUiThread {
-            logEvent("Tor Connection Status:${message}")
-        }
     }
 
     fun doOkHttp3(url: String) {
@@ -216,9 +205,7 @@ class MainActivity : AppCompatActivity(), Tor.Listener {
     fun doSocketConnection(sUrl: String) {
         try {
 
-            val url: URL
-
-            url = try {
+            val url: URL = try {
                 URL(sUrl)
             } catch (ex: MalformedURLException) {
                 return

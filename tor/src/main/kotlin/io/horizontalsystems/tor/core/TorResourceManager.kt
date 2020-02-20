@@ -7,12 +7,9 @@ import io.horizontalsystems.tor.utils.NativeLoader
 import io.horizontalsystems.tor.utils.NetworkUtils
 import java.io.*
 import java.util.concurrent.TimeoutException
-import java.util.logging.Logger
 import java.util.zip.ZipInputStream
 
 class TorResourceManager(private val torSettings: Tor.Settings) {
-
-    private val logger = Logger.getLogger("TorResourceManager")
 
     lateinit var fileTor: File
     lateinit var fileTorrcCustom: File
@@ -24,10 +21,10 @@ class TorResourceManager(private val torSettings: Tor.Settings) {
     @Throws(IOException::class, TimeoutException::class)
     fun installResources(): File? {
 
-        if(!torSettings.appFilesDir.exists())
+        if (!torSettings.appFilesDir.exists())
             torSettings.appFilesDir.mkdirs()
 
-        if(!torSettings.appDataDir.exists())
+        if (!torSettings.appDataDir.exists())
             torSettings.appDataDir.mkdirs()
 
         fileTorControlPort = File(torSettings.appFilesDir, TorConstants.TOR_CONTROL_PORT_FILE)
@@ -57,17 +54,16 @@ class TorResourceManager(private val torSettings: Tor.Settings) {
             }
 
             val insStream: InputStream = FileInputStream(fileTor)
-            streamToFile(
-                    insStream, fileTor, false, true
-            )
+            streamToFile(insStream, fileTor, false, true)
             FileUtils.setExecutable(fileTor)
 
             if (fileTor.exists() && fileTor.canExecute())
                 return fileTor
 
             //it exists but we can't execute it, so copy it to a new path
-            return NativeLoader.loadNativeBinary(torSettings.appNativeDir, torSettings.appSourceDir, TorConstants.TOR_ASSET_KEY,
-                                                 File(torSettings.appFilesDir, TorConstants.TOR_ASSET_KEY))?.let {
+            return NativeLoader.loadNativeBinary(
+                    torSettings.appNativeDir, torSettings.appSourceDir, TorConstants.TOR_ASSET_KEY,
+                    File(torSettings.appFilesDir, TorConstants.TOR_ASSET_KEY))?.let {
 
                 if (it.exists())
                     FileUtils.setExecutable(fileTor)
@@ -91,26 +87,17 @@ class TorResourceManager(private val torSettings: Tor.Settings) {
         extraLines.append("\n")
         extraLines.append("RunAsDaemon 1").append('\n')
         extraLines.append("AvoidDiskWrites 1").append('\n')
-        extraLines.append("ControlPortWriteToFile ")
-            .append(fileTorControlPort.absolutePath).append('\n')
+        extraLines.append("ControlPortWriteToFile ").append(fileTorControlPort.absolutePath).append('\n')
         extraLines.append("ControlPort Auto").append('\n')
-        extraLines.append("SOCKSPort ").append(checkPortOrAuto(
-            TorConstants.SOCKS_PROXY_PORT_DEFAULT)).append('\n')
-        extraLines.append("SocksListenAddress 0.0.0.0").append('\n')
+        extraLines.append("SOCKSPort ").append(checkPortOrAuto(TorConstants.SOCKS_PROXY_PORT_DEFAULT)).append('\n')
         extraLines.append("ReducedConnectionPadding 1").append('\n')
         extraLines.append("ReducedCircuitPadding 1").append('\n')
         extraLines.append("SafeSocks 0").append('\n')
         extraLines.append("TestSocks 0").append('\n')
-        extraLines.append("HTTPTunnelPort ").append(checkPortOrAuto(
-                TorConstants.HTTP_PROXY_PORT_DEFAULT)).append('\n')
-        extraLines.append("TransPort ").append(checkPortOrAuto(
-            TorConstants.TOR_TRANSPROXY_PORT_DEFAULT)).append('\n')
-        extraLines.append("DNSPort ").append(checkPortOrAuto(
-                TorConstants.TOR_DNS_PORT_DEFAULT)).append('\n')
+        extraLines.append("TransPort 0").append('\n')
+        extraLines.append("HTTPTunnelPort ").append(checkPortOrAuto(TorConstants.HTTP_PROXY_PORT_DEFAULT)).append('\n')
+        extraLines.append("DNSPort ").append(checkPortOrAuto(TorConstants.TOR_DNS_PORT_DEFAULT)).append('\n')
         extraLines.append("CookieAuthentication 1").append('\n')
-        extraLines.append("VirtualAddrNetwork 10.192.0.0/10").append('\n')
-        extraLines.append("AutomapHostsOnResolve 1").append('\n')
-
         extraLines.append("DisableNetwork 0").append('\n')
 
         val fileTorRcCustom = File(fileTorrc.getAbsolutePath() + ".custom")
@@ -211,21 +198,6 @@ class TorResourceManager(private val torSettings: Tor.Settings) {
         zis?.close()
 
         return true
-    }
-
-    private fun listf(directoryName: String): Array<File>? { // .............list file
-        val directory = File(directoryName)
-        // get all the files from a directory
-        val fList = directory.listFiles()
-
-        if (fList != null) for (file in fList) {
-            if (file.isFile) {
-                Log.d(TorConstants.TAG, file.absolutePath)
-            } else if (file.isDirectory) {
-                listf(file.absolutePath)
-            }
-        }
-        return fList
     }
 
 }

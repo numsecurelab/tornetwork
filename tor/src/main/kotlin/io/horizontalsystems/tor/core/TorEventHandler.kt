@@ -2,14 +2,28 @@ package io.horizontalsystems.tor.core
 
 import android.text.TextUtils
 import io.horizontalsystems.tor.ConnectionStatus
+import io.horizontalsystems.tor.Tor
 import net.freehaven.tor.control.EventHandler
 import java.util.logging.Logger
 
 open class TorEventHandler : EventHandler {
 
-    private var torControl : TorControl = TorControl.instance
+    private var torControl: TorControl = TorControl.instance
 
     private val logger = Logger.getLogger("TorEventHandler")
+
+    private fun eventMonitor(torInfo: Tor.Info? = null, msg: String? = null) {
+        msg?.let {
+            logger.info(msg)
+        }
+
+        torInfo?.let {
+            torControl.torObservable?.let {
+                if (it.hasObservers())
+                    it.onNext(torInfo)
+            }
+        }
+    }
 
     override fun streamStatus(status: String?, streamID: String?, target: String?) {
     }
@@ -21,16 +35,15 @@ open class TorEventHandler : EventHandler {
     override fun orConnStatus(status: String?, orName: String?) {
         status?.let {
 
-            if(TextUtils.equals(status, "CONNECTED"))
-            {
-                torControl.onBootstrapped(torControl.torInfo)
-            }
-            else if(TextUtils.equals(status, "FAILED")) {
-                //Thread(Runnable {
-                    torControl.torInfo.connection.status = ConnectionStatus.FAILED
-                    torControl.torObservable?.onNext(torControl.torInfo)
-                    torControl.torListener?.onConnStatusUpdate(torControl.torInfo.connection, "ConnectionStatus: ${status}")
-                //}).start()
+            if (TextUtils.equals(status, "CONNECTED")) {
+
+                Thread(Runnable {
+                    torControl.onBootstrapped(torControl.torInfo)
+                }).start()
+
+            } else if (TextUtils.equals(status, "FAILED")) {
+                torControl.torInfo.connection.status = ConnectionStatus.FAILED
+                eventMonitor(torControl.torInfo)
             }
         }
 
@@ -47,7 +60,5 @@ open class TorEventHandler : EventHandler {
     }
 
     override fun message(severity: String?, msg: String?) {
-        val logMessage = "Message:${msg}"
-        logger.info(logMessage)
     }
 }

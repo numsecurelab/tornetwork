@@ -1,5 +1,6 @@
 package io.horizontalsystems.tor.core
 
+import io.horizontalsystems.tor.ConnectionStatus
 import io.horizontalsystems.tor.Tor
 import io.reactivex.Observable
 import io.reactivex.schedulers.Schedulers
@@ -13,7 +14,6 @@ import java.util.logging.Logger
 class TorControl(
         private val fileControlPort: File,
         private val appCacheHome: File,
-        val torListener: Tor.Listener?,
         val torObservable: Subject<Tor.Info>?,
         val torInfo: Tor.Info) {
 
@@ -23,6 +23,7 @@ class TorControl(
     private var controlConn: TorControlConnection? = null
     private var torEventHandler: TorEventHandler? = null
     private var torProcessId: Int = -1
+    private val MAX_BOOTSTRAP_CHECK_TRIES = 10
 
     companion object {
         lateinit var instance: TorControl
@@ -32,9 +33,18 @@ class TorControl(
         instance = this
     }
 
-    private fun eventMonitor(msg: String?) {
+    private fun eventMonitor(torInfo: Tor.Info? = null, msg: String? = null) {
         msg?.let {
             logger.info(msg)
+        }
+
+        torInfo?.let {
+            torObservable?.let {
+                if (it.hasObservers()) {
+                    torInfo.statusMessage = msg
+                    it.onNext(torInfo)
+                }
+            }
         }
     }
 
@@ -61,8 +71,8 @@ class TorControl(
 
     fun initConnection(maxTries: Int): Observable<Tor.Connection> {
 
-        torInfo.connection.isBootstrapped = false
-        torObservable?.onNext(torInfo)
+        torInfo.connection.status = ConnectionStatus.CONNECTING
+        eventMonitor(torInfo)
 
         return createControlConn(maxTries)
                 .subscribeOn(Schedulers.io())
@@ -86,7 +96,7 @@ class TorControl(
 
                     if (controlPort != -1) {
 
-                        eventMonitor("Connecting to control port: $controlPort")
+                        eventMonitor(msg = "Connecting to control port: $controlPort")
 
                         val torConnSocket = Socket(TorConstants.IP_LOCALHOST, controlPort)
                         torConnSocket.soTimeout = CONTROL_SOCKET_TIMEOUT
@@ -94,18 +104,21 @@ class TorControl(
                         val conn = TorControlConnection(torConnSocket)
                         controlConn = conn
 
-                        eventMonitor("SUCCESS connected to Tor control port.")
+                        eventMonitor(msg = "SUCCESS connected to Tor control port.")
                         emitter.onNext(conn)
                     }
                 } catch (e: Exception) {
                     controlConn = null
-                    eventMonitor("Error connecting to Tor local control port: " + e.localizedMessage)
+                    torInfo.connection.processId = -1
+                    torInfo.connection.status = ConnectionStatus.FAILED
+
+                    eventMonitor(torInfo, msg = "Error connecting to Tor local control port: " + e.localizedMessage)
                     emitter.tryOnError(e)
                 }
 
                 // Wait for control file creation -> Replace this implementation with RX.
                 //-----------------------------
-                Thread.sleep(100)
+                Thread.sleep(200)
                 //-----------------------------
             }
         }
@@ -123,12 +136,11 @@ class TorControl(
                 fis.read(cookie)
                 fis.close()
                 conn.authenticate(cookie)
-                eventMonitor("SUCCESS - authenticated to control port.")
                 val torProcId = conn.getInfo("process/pid")
 
                 torProcessId = torProcId.toInt()
                 torInfo.connection.processId = torProcessId
-                torObservable?.onNext(torInfo)
+                eventMonitor(torInfo, msg = "SUCCESS - started tor control processId:${torProcId}")
 
                 TorEventHandler().let {
                     torEventHandler = it
@@ -138,16 +150,14 @@ class TorControl(
                 return torInfo.connection
 
             } else {
-                eventMonitor("Tor authentication cookie does not exist yet")
+                eventMonitor(msg = "Tor authentication cookie does not exist yet")
             }
         } catch (e: Exception) {
 
             controlConn = null
             torInfo.connection.processId = -1
-            torInfo.connection.isBootstrapped = false
-            torObservable?.onNext(torInfo)
-
-            eventMonitor("Error configuring Tor connection: " + e.localizedMessage)
+            torInfo.connection.status = ConnectionStatus.FAILED
+            eventMonitor(torInfo, msg = "Error configuring Tor connection: " + e.localizedMessage)
         }
 
         return Tor.Connection(-1)
@@ -164,38 +174,47 @@ class TorControl(
 
     @Synchronized
     fun onBootstrapped(torInfo: Tor.Info) {
-        if (!torInfo.connection.isBootstrapped) {
-            Thread(Runnable {
-                var isSuccess = isBootstrapped()
+        if (torInfo.connection.status != ConnectionStatus.CONNECTED) {
 
-                while (isSuccess == 0) {
-                    Thread.sleep(900)
-                    isSuccess = isBootstrapped()
-                }
+            eventMonitor( msg = "Starting Bootstrap checking job ...")
 
-                torInfo.connection.isBootstrapped = (isSuccess == 1)
-                torObservable?.onNext(torInfo)
+            var isSuccess: Int
+            var tries = 1
 
-            }).start()
+            do {
+                isSuccess = getBootStatus()
+                Thread.sleep(900)
+                tries++
+
+            } while (isSuccess == 0 && tries <= MAX_BOOTSTRAP_CHECK_TRIES)
+
+
+            if (isSuccess == 1) {
+                torInfo.connection.status = ConnectionStatus.CONNECTED
+                eventMonitor(torInfo, msg = "Tor Bootstrapped 100%")
+            } else if (isSuccess == -1 || tries >= MAX_BOOTSTRAP_CHECK_TRIES) {
+                torInfo.connection.status = ConnectionStatus.FAILED
+                eventMonitor(torInfo)
+            }
         }
     }
 
     @Synchronized
-    fun isBootstrapped(): Int {
+    fun getBootStatus(): Int {
 
         controlConn?.let {
 
             try {
                 val phase: String? = it.getInfo("status/bootstrap-phase")
-                if (phase != null && phase.contains("PROGRESS=100")) {
-                    eventMonitor("Tor has already bootstrapped")
+                eventMonitor(msg = "Boot status:${phase}")
+
+                if (phase != null && phase.contains("PROGRESS=100"))
                     return 1
-                }
                 else
                     return 0
 
             } catch (e: IOException) {
-                eventMonitor("Control connection is not responding properly to getInfo:${e}")
+                eventMonitor(msg = "Control connection is not responding properly to getInfo:${e}")
             }
         }
 
@@ -207,7 +226,7 @@ class TorControl(
 
         try {
             if (fileControlPort.exists()) {
-                eventMonitor("Reading control port config file: " + fileControlPort.canonicalPath)
+                eventMonitor(msg = "Reading control port config file: " + fileControlPort.canonicalPath)
                 val bufferedReader =
                         BufferedReader(FileReader(fileControlPort))
                 val line = bufferedReader.readLine()
@@ -218,15 +237,14 @@ class TorControl(
                 bufferedReader.close()
 
             } else {
-                eventMonitor(
-                        "Control Port config file does not yet exist (waiting for tor): "
-                                + fileControlPort.canonicalPath
+                eventMonitor(msg = "Control Port config file does not yet exist (waiting for tor): "
+                        + fileControlPort.canonicalPath
                 )
             }
         } catch (e: FileNotFoundException) {
-            eventMonitor("unable to get control port; file not found")
+            eventMonitor(msg = "unable to get control port; file not found")
         } catch (e: java.lang.Exception) {
-            eventMonitor("unable to read control port config file")
+            eventMonitor(msg = "unable to read control port config file")
         }
 
         return result
@@ -235,13 +253,13 @@ class TorControl(
 
     @Throws(java.lang.Exception::class)
     private fun addEventHandler(conn: TorControlConnection, torEventHandler: TorEventHandler) {
-        eventMonitor("adding control port event handler")
+        eventMonitor(msg = "adding control port event handler")
 
         conn.let {
             it.setEventHandler(torEventHandler)
             it.setEvents(listOf("ORCONN", "CIRC", "NOTICE", "WARN", "ERR", "BW"))
 
-            eventMonitor("SUCCESS added control port event handler")
+            eventMonitor(msg = "SUCCESS added control port event handler")
         }
     }
 }

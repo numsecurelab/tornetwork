@@ -5,16 +5,16 @@ import android.content.Context
 import io.horizontalsystems.tor.core.TorConstants
 import java.io.File
 
-enum class EntityState(val processId: Int) {
+enum class EntityStatus(val processId: Int) {
     STARTING(-1),
     RUNNING(1),
     STOPPED(0);
 
     companion object {
 
-        fun getByProcessId(procId: Int): EntityState {
+        fun getByProcessId(procId: Int): EntityStatus {
             return values()
-                .find { it.processId == procId } ?: RUNNING
+                    .find { it.processId == procId } ?: RUNNING
         }
     }
 
@@ -36,7 +36,7 @@ enum class ConnectionStatus {
 
         fun getByName(typName: String): ConnectionStatus {
             return values()
-                .find { it.name.contentEquals(typName.toUpperCase()) } ?: CLOSED
+                    .find { it.name.contentEquals(typName.toUpperCase()) } ?: CLOSED
         }
     }
 
@@ -56,45 +56,31 @@ object Tor {
             }
 
         var isInstalled: Boolean = false
+        var statusMessage: String? = null
 
-        var state: EntityState
-            get() = EntityState.getByProcessId(processId)
+        var status: EntityStatus
+            get() = EntityStatus.getByProcessId(processId)
             set(value) {
                 processId = value.processId
 
-                if(value == EntityState.STOPPED)
-                    connection.isBootstrapped = false
+                if (value == EntityStatus.STOPPED)
+                    connection.status = ConnectionStatus.CLOSED
             }
-
-        val isStarted: Boolean
-            get() = connection.processId > 0
     }
 
     class Connection(processIdArg: Int = -1) {
 
         var processId: Int = processIdArg
+            set(value) {
+                if (processId > 0)
+                    status = ConnectionStatus.CONNECTING
+                field = value
+            }
+
         var proxyHost = TorConstants.IP_LOCALHOST
         var proxySocksPort = TorConstants.SOCKS_PROXY_PORT_DEFAULT
         var proxyHttpPort = TorConstants.HTTP_PROXY_PORT_DEFAULT
-        var isBootstrapped: Boolean = false
-        var status: ConnectionStatus
-            get() {
-                return if (processId > 0) {
-
-                    if (isBootstrapped)
-                        ConnectionStatus.CONNECTED
-                    else
-                        ConnectionStatus.CONNECTING
-                } else {
-                    ConnectionStatus.CLOSED
-                }
-            }
-        set(value) {
-            if(value == ConnectionStatus.CONNECTED)
-                isBootstrapped = true
-            else if(value == ConnectionStatus.FAILED)
-                isBootstrapped = false
-        }
+        var status: ConnectionStatus = ConnectionStatus.CLOSED
     }
 
     class Settings(var context: Context) {

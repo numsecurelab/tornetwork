@@ -1,7 +1,7 @@
 package io.horizontalsystems.tor.core
 
 import com.jaredrummler.android.shell.Shell
-import io.horizontalsystems.tor.EntityState
+import io.horizontalsystems.tor.EntityStatus
 import io.horizontalsystems.tor.Tor
 import io.horizontalsystems.tor.utils.ProcessUtils
 import io.reactivex.Single
@@ -13,7 +13,6 @@ import java.util.logging.Logger
 
 class TorOperator(
         private val torSettings: Tor.Settings,
-        private val torListener: Tor.Listener?,
         private val torObservable: Subject<Tor.Info>?) {
 
     private val logger = Logger.getLogger("TorOperator")
@@ -33,13 +32,15 @@ class TorOperator(
             if (success) {
 
                 torInfo.isInstalled = true
-                torObservable?.onNext(torInfo)
+                eventMonitor(torInfo = torInfo, msg = "Tor install success.")
 
-                eventMonitor(torInfo = torInfo, message = "Tor install success.")
+                //-----------------------------
+                killTorProcess()
+                //-----------------------------
 
                 if (runTorShellCmd(resManager.fileTor, resManager.fileTorrcCustom)) {
 
-                    eventMonitor(torInfo = torInfo, message = "Successfully verified config")
+                    eventMonitor(msg = "Successfully verified config")
 
                     // Wait for control file creation -> Replace this implementation with RX.
                     //-----------------------------
@@ -49,24 +50,20 @@ class TorOperator(
                     torControl = TorControl(
                             resManager.fileTorControlPort,
                             torSettings.appDataDir,
-                            torListener,
                             torObservable,
                             torInfo)
 
-                    torInfo.state = EntityState.RUNNING
-                    torObservable?.onNext(torInfo)
-                    eventMonitor(torInfo = torInfo, message = "Tor started successfully")
+                    torInfo.status = EntityStatus.RUNNING
+                    eventMonitor(torInfo = torInfo, msg = "Tor started successfully")
 
                     torControl?.let {
                         it.initConnection(4)
                                 .subscribe(
                                         { torConnection ->
                                             torInfo.connection = torConnection
-                                            torObservable?.onNext(torInfo)
                                         },
                                         {
                                             torInfo.processId = -1
-                                            torObservable?.onNext(torInfo)
                                         })
 
                     }
@@ -77,31 +74,36 @@ class TorOperator(
             torInfo.processId = -1
             torObservable?.onNext(torInfo)
 
-            eventMonitor(torInfo = torInfo, message = "Error starting Tor")
-            eventMonitor(message = e.message.toString())
+            eventMonitor(torInfo = torInfo, msg = "Error starting Tor")
+            eventMonitor(msg = e.message.toString())
         }
 
         return torObservable?.let { it } ?: Subject.just(torInfo) as Subject<Tor.Info>
     }
 
     fun stop(): Single<Boolean> {
-        return killAllDaemons().subscribeOn(Schedulers.io())
+        return killAllDaemons()
+                .subscribeOn(Schedulers.io())
     }
 
     fun newIdentity(): Boolean {
         return torControl?.newIdentity() ?: false
     }
 
-    private fun eventMonitor(
-            torInfo: Tor.Info? = null,
-            logLevel: Level = Level.SEVERE,
-            message: String) {
+    private fun eventMonitor(torInfo: Tor.Info? = null, logLevel: Level = Level.SEVERE, msg: String?= null) {
 
-        torListener?.let {
-            torListener.onProcessStatusUpdate(torInfo, message)
+        msg?.let {
+            logger.log(logLevel, msg)
         }
 
-        logger.log(logLevel, message)
+        torInfo?.let {
+            torObservable?.let {
+                if (it.hasObservers()) {
+                    torInfo.statusMessage = msg
+                    it.onNext(torInfo)
+                }
+            }
+        }
     }
 
     @Throws(java.lang.Exception::class)
@@ -116,8 +118,7 @@ class TorOperator(
                     result = killTorProcess()
                 }
 
-                torInfo.state = EntityState.STOPPED
-                torObservable?.onNext(torInfo)
+                torInfo.status = EntityStatus.STOPPED
 
                 eventMonitor(torInfo, Level.INFO, "Tor stopped")
                 emitter.onSuccess(result)
@@ -130,7 +131,7 @@ class TorOperator(
 
     private fun killTorProcess(): Boolean {
         try {
-            ProcessUtils.killProcess(resManager.fileTor, "-9") // this is -HUP
+            ProcessUtils.killProcess(resManager.fileTor) // this is -HUP
             return true
         } catch (e: Exception) {
             return false
@@ -142,7 +143,7 @@ class TorOperator(
         val appCacheHome: File = torSettings.appDataDir
 
         if (!fileTorrc.exists()) {
-            eventMonitor(message = "torrc not installed: " + fileTorrc.canonicalPath)
+            eventMonitor(msg = "torrc not installed: " + fileTorrc.canonicalPath)
             return false
         }
         val torCmdString = (fileTor.canonicalPath
@@ -154,24 +155,24 @@ class TorOperator(
         exitCode = try {
             exec("$torCmdString --verify-config", true)
         } catch (e: Exception) {
-            eventMonitor(message = "Tor configuration did not verify: " + e.message + e)
+            eventMonitor(msg = "Tor configuration did not verify: " + e.message + e)
             return false
         }
 
         if (exitCode != 0) {
-            eventMonitor(message = "Tor configuration did not verify:$exitCode")
+            eventMonitor(msg = "Tor configuration did not verify:$exitCode")
             return false
         }
 
         exitCode = try {
             exec(torCmdString, true)
         } catch (e: Exception) {
-            eventMonitor(message = "Tor was unable to start: " + e.message + e)
+            eventMonitor(msg = "Tor was unable to start: " + e.message + e)
             return false
         }
 
         if (exitCode != 0) {
-            eventMonitor(message = "Tor did not start. Exit:$exitCode")
+            eventMonitor(msg = "Tor did not start. Exit:$exitCode")
             return false
         }
 
@@ -189,8 +190,7 @@ class TorOperator(
             )
         }
 
-        eventMonitor(message = "Result:$shellResult")
-
+        eventMonitor(msg = "Result:$shellResult")
 
         return shellResult.exitCode
     }

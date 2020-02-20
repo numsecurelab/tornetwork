@@ -6,9 +6,7 @@ import io.reactivex.Single
 import io.reactivex.subjects.PublishSubject
 import io.reactivex.subjects.Subject
 
-class TorManager(
-        context: Context,
-        private val torListener: Tor.Listener?) {
+class TorManager(context: Context) {
 
     private var torSettings: Tor.Settings = Tor.Settings(context)
     private lateinit var torOperator: TorOperator
@@ -17,7 +15,7 @@ class TorManager(
     fun start(useBridges: Boolean): Subject<Tor.Info> {
 
         torSettings.useBridges = useBridges
-        torOperator = TorOperator( torSettings, torListener, torObservable )
+        torOperator = TorOperator( torSettings, torObservable )
 
         return torOperator.start()
     }

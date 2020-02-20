@@ -13,10 +13,10 @@ import java.net.HttpURLConnection
 import java.net.Socket
 import java.net.URL
 
-class NetKit(context: Context, torListener: Tor.Listener? = null) {
+class NetKit(context: Context) {
 
     private val torNotificationManager = NetNotificationManager(context)
-    private val torManager = TorManager(context, torListener)
+    private val torManager = TorManager(context)
     private var disposable: Disposable? = null
 
 

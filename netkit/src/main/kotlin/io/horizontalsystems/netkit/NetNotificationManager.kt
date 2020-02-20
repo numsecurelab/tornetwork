@@ -8,7 +8,7 @@ import android.content.Intent
 import androidx.core.app.NotificationCompat
 import androidx.core.app.NotificationManagerCompat
 import io.horizontalsystems.tor.ConnectionStatus
-import io.horizontalsystems.tor.EntityState
+import io.horizontalsystems.tor.EntityStatus
 import io.horizontalsystems.tor.R
 import io.horizontalsystems.tor.Tor
 
@@ -38,9 +38,9 @@ class NetNotificationManager(private val context: Context) {
 
         torInfo?.let {
 
-            title = when (it.state) {
-                EntityState.STARTING -> "Tor: Starting"
-                EntityState.RUNNING -> "Tor: Running"
+            title = when (it.status) {
+                EntityStatus.STARTING -> "Tor: Starting"
+                EntityStatus.RUNNING -> "Tor: Running"
                 else -> "Tor: Stopped"
             }
 
