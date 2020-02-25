@@ -102,7 +102,6 @@ class MainActivity : AppCompatActivity(){
 
     }
 
-
     private fun startTor() {
 
         disposables.add(
@@ -276,5 +275,4 @@ class MainActivity : AppCompatActivity(){
 
             }
     }
-
 }

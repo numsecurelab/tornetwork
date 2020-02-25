@@ -90,7 +90,7 @@ class TorOperator(
         return torControl?.newIdentity() ?: false
     }
 
-    private fun eventMonitor(torInfo: Tor.Info? = null, logLevel: Level = Level.SEVERE, msg: String?= null) {
+    private fun eventMonitor(torInfo: Tor.Info? = null, logLevel: Level = Level.SEVERE, msg: String? = null) {
 
         msg?.let {
             logger.log(logLevel, msg)
@@ -124,6 +124,7 @@ class TorOperator(
                 emitter.onSuccess(result)
 
             } catch (e: java.lang.Exception) {
+                eventMonitor(torInfo, Level.SEVERE, "Tor stopped, but with errors:${e.localizedMessage}")
                 emitter.onError(e)
             }
         }

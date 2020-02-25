@@ -176,7 +176,7 @@ class TorControl(
     fun onBootstrapped(torInfo: Tor.Info) {
         if (torInfo.connection.status != ConnectionStatus.CONNECTED) {
 
-            eventMonitor( msg = "Starting Bootstrap checking job ...")
+            eventMonitor( msg = "Starting Bootstrap status checking job ...")
 
             var isSuccess: Int
             var tries = 1
