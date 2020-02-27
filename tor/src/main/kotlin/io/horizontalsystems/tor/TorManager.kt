@@ -3,25 +3,28 @@ package io.horizontalsystems.tor
 import android.content.Context
 import io.horizontalsystems.tor.core.TorOperator
 import io.reactivex.Single
-import io.reactivex.subjects.PublishSubject
-import io.reactivex.subjects.Subject
 
-class TorManager(context: Context) {
+class TorManager(context: Context, private val listener: Listener): TorOperator.Listener {
+
+    interface Listener{
+        fun statusUpdate(torInfo: Tor.Info)
+    }
 
     private var torSettings: Tor.Settings = Tor.Settings(context)
     private lateinit var torOperator: TorOperator
-    val torObservable = PublishSubject.create<Tor.Info>()
 
-    fun start(useBridges: Boolean): Subject<Tor.Info> {
-
+    fun start(useBridges: Boolean) {
         torSettings.useBridges = useBridges
-        torOperator = TorOperator(torSettings, torObservable)
-
-        return torOperator.start()
+        torOperator = TorOperator(torSettings, this)
+        torOperator.start()
     }
 
     fun stop(): Single<Boolean> {
         return torOperator.stop()
+    }
+
+    override fun statusUpdate(torInfo: Tor.Info) {
+        listener.statusUpdate(torInfo)
     }
 
     fun newIdentity(): Boolean {
