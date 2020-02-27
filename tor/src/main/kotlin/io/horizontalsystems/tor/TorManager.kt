@@ -15,7 +15,7 @@ class TorManager(context: Context) {
     fun start(useBridges: Boolean): Subject<Tor.Info> {
 
         torSettings.useBridges = useBridges
-        torOperator = TorOperator( torSettings, torObservable )
+        torOperator = TorOperator(torSettings, torObservable)
 
         return torOperator.start()
     }
