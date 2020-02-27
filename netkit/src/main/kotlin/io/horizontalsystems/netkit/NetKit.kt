@@ -66,7 +66,6 @@ class NetKit(context: Context) {
                 TorConstants.SOCKS_PROXY_PORT_DEFAULT.toInt())
     }
 
-
     fun enableProxy() {
         ConnectionManager.setSystemProxy(
                 true,

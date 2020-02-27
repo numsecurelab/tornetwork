@@ -7,16 +7,17 @@ import io.horizontalsystems.tor.utils.NativeLoader
 import io.horizontalsystems.tor.utils.NetworkUtils
 import java.io.*
 import java.util.concurrent.TimeoutException
+import java.util.logging.Logger
 import java.util.zip.ZipInputStream
 
 class TorResourceManager(private val torSettings: Tor.Settings) {
 
+    private val logger = Logger.getLogger("TorResourceManager")
+
     lateinit var fileTor: File
     lateinit var fileTorrcCustom: File
     lateinit var fileTorControlPort: File
-
     private lateinit var fileTorrc: File
-
 
     @Throws(IOException::class, TimeoutException::class)
     fun installResources(): File? {
@@ -40,9 +41,7 @@ class TorResourceManager(private val torSettings: Tor.Settings) {
             fileTorrcCustom = it
         }
 
-
         fileTor = File(torSettings.appNativeDir, TorConstants.TOR_ASSET_KEY + ".so")
-
 
         if (fileTor.exists()) {
             if (fileTor.canExecute())
@@ -74,8 +73,9 @@ class TorResourceManager(private val torSettings: Tor.Settings) {
                 } else
                     null
             }
+        } else {
+            logger.severe("Error!!! File:${fileTor} not found !!!")
         }
-
         return null
     }
 

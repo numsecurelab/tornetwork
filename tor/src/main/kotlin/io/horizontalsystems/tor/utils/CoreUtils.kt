@@ -1,10 +1,25 @@
 package io.horizontalsystems.tor.utils
 
+import android.os.FileObserver
 import io.horizontalsystems.tor.core.TorConstants
 import java.io.BufferedReader
 import java.io.File
 import java.io.IOException
 import java.io.InputStreamReader
+
+
+class TorFileObserver(path: String) : FileObserver(path, CREATE) {
+
+    var aboslutePath = "path to your directory"
+
+    init {
+        aboslutePath = path
+    }
+
+    override fun onEvent(event: Int, path: String?) {
+
+    }
+}
 
 object FileUtils {
     fun setExecutable(fileBin: File) {

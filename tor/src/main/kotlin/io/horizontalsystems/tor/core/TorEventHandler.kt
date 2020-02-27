@@ -9,7 +9,6 @@ import java.util.logging.Logger
 open class TorEventHandler : EventHandler {
 
     private var torControl: TorControl = TorControl.instance
-
     private val logger = Logger.getLogger("TorEventHandler")
 
     private fun eventMonitor(torInfo: Tor.Info? = null, msg: String? = null) {
@@ -26,6 +25,7 @@ open class TorEventHandler : EventHandler {
     }
 
     override fun streamStatus(status: String?, streamID: String?, target: String?) {
+        //logger.info("StreamStatus:${status},${streamID},${target}")
     }
 
     override fun bandwidthUsed(read: Long, written: Long) {
@@ -54,11 +54,14 @@ open class TorEventHandler : EventHandler {
     }
 
     override fun unrecognized(type: String?, msg: String?) {
+        logger.info("Unrecognized:${msg}")
     }
 
     override fun circuitStatus(status: String?, circID: String?, path: String?) {
+        //logger.info("CircuitStatus:${status},${circID}")
     }
 
     override fun message(severity: String?, msg: String?) {
+        logger.info("ConnectionMessage:${msg}")
     }
 }

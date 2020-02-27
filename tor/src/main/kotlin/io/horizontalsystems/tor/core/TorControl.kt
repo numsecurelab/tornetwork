@@ -10,7 +10,6 @@ import java.io.*
 import java.net.Socket
 import java.util.logging.Logger
 
-
 class TorControl(
         private val fileControlPort: File,
         private val appCacheHome: File,
@@ -23,7 +22,7 @@ class TorControl(
     private var controlConn: TorControlConnection? = null
     private var torEventHandler: TorEventHandler? = null
     private var torProcessId: Int = -1
-    private val MAX_BOOTSTRAP_CHECK_TRIES = 10
+    private val MAX_BOOTSTRAP_CHECK_TRIES = 50
 
     companion object {
         lateinit var instance: TorControl
@@ -58,10 +57,7 @@ class TorControl(
                 it.shutdownTor("HALT")
                 return true
             }
-        } catch (e: java.lang.Exception) {
-
-        }
-
+        } catch (e: java.lang.Exception) { }
         return false
     }
 
@@ -118,7 +114,7 @@ class TorControl(
 
                 // Wait for control file creation -> Replace this implementation with RX.
                 //-----------------------------
-                Thread.sleep(200)
+                Thread.sleep(300)
                 //-----------------------------
             }
         }
@@ -249,7 +245,6 @@ class TorControl(
 
         return result
     }
-
 
     @Throws(java.lang.Exception::class)
     private fun addEventHandler(conn: TorControlConnection, torEventHandler: TorEventHandler) {
