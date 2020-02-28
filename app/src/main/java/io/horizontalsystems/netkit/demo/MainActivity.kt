@@ -25,7 +25,7 @@ import kotlin.system.exitProcess
 
 
 @SuppressLint("SetTextI18n")
-class MainActivity : AppCompatActivity(){
+class MainActivity : AppCompatActivity() {
 
 
     interface GetIPApi {
@@ -103,10 +103,8 @@ class MainActivity : AppCompatActivity(){
     }
 
     private fun startTor() {
-
         disposables.add(
-            netKit.startTor(useBridges = false)
-                .observeOn(AndroidSchedulers.mainThread())
+            netKit.torInfoSubject.observeOn(AndroidSchedulers.mainThread())
                 .subscribe(
                     { netStatus ->
                         netStatus.statusMessage?.let {
@@ -117,6 +115,7 @@ class MainActivity : AppCompatActivity(){
                         logEvent("TorError:${error}")
                     })
         )
+        netKit.startTor(useBridges = false)
     }
 
     private fun testTORConnection() {
@@ -194,10 +193,10 @@ class MainActivity : AppCompatActivity(){
 
         disposables.add(
             obser.getIP("/").subscribeOn(Schedulers.io()).observeOn(AndroidSchedulers.mainThread())
-                    .subscribe({ result -> txTorTestStatus2.text = "IP assigned :$result" },
-                               { error ->
-                                   txTorTestStatus2.text = error.toString()
-                               })
+                .subscribe({ result -> txTorTestStatus2.text = "IP assigned :$result" },
+                    { error ->
+                        txTorTestStatus2.text = error.toString()
+                    })
         )
     }
 

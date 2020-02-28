@@ -1,20 +1,26 @@
 package io.horizontalsystems.tor.core
 
+import android.text.TextUtils
 import io.horizontalsystems.tor.ConnectionStatus
 import io.horizontalsystems.tor.Tor
 import io.reactivex.Observable
 import io.reactivex.schedulers.Schedulers
-import io.reactivex.subjects.Subject
+import net.freehaven.tor.control.EventHandler
 import net.freehaven.tor.control.TorControlConnection
 import java.io.*
 import java.net.Socket
 import java.util.logging.Logger
 
 class TorControl(
-        private val fileControlPort: File,
-        private val appCacheHome: File,
-        val torObservable: Subject<Tor.Info>?,
-        val torInfo: Tor.Info) {
+    private val fileControlPort: File,
+    private val appCacheHome: File,
+    private val listener: Listener,
+    val torInfo: Tor.Info
+) {
+
+    interface Listener {
+        fun statusUpdate(torInfo: Tor.Info)
+    }
 
     private val logger = Logger.getLogger("TorControl")
 
@@ -24,26 +30,15 @@ class TorControl(
     private var torProcessId: Int = -1
     private val MAX_BOOTSTRAP_CHECK_TRIES = 50
 
-    companion object {
-        lateinit var instance: TorControl
-    }
 
-    init {
-        instance = this
-    }
-
-    private fun eventMonitor(torInfo: Tor.Info? = null, msg: String? = null) {
+    fun eventMonitor(torInfo: Tor.Info? = null, msg: String? = null) {
         msg?.let {
             logger.info(msg)
         }
 
         torInfo?.let {
-            torObservable?.let {
-                if (it.hasObservers()) {
-                    torInfo.statusMessage = msg
-                    it.onNext(torInfo)
-                }
-            }
+            it.statusMessage = msg
+            listener.statusUpdate(it)
         }
     }
 
@@ -71,12 +66,12 @@ class TorControl(
         eventMonitor(torInfo)
 
         return createControlConn(maxTries)
-                .subscribeOn(Schedulers.io())
-                .map {
-                    configConnection(it, torInfo)
-                }.onErrorReturn {
-                    Tor.Connection(-1)
-                }
+            .subscribeOn(Schedulers.io())
+            .map {
+                configConnection(it, torInfo)
+            }.onErrorReturn {
+                Tor.Connection(-1)
+            }
     }
 
     private fun createControlConn(maxTries: Int): Observable<TorControlConnection> {
@@ -123,7 +118,6 @@ class TorControl(
     private fun configConnection(conn: TorControlConnection, torInfo: Tor.Info): Tor.Connection {
 
         try {
-
             val fileCookie = File(appCacheHome, TorConstants.TOR_CONTROL_COOKIE)
 
             if (fileCookie.exists()) {
@@ -138,8 +132,8 @@ class TorControl(
                 torInfo.connection.processId = torProcessId
                 eventMonitor(torInfo, msg = "SUCCESS - started tor control processId:${torProcId}")
 
-                TorEventHandler().let {
-                    torEventHandler = it
+                torEventHandler = TorEventHandler(this)
+                torEventHandler?.let {
                     addEventHandler(conn, it)
                 }
 
@@ -172,7 +166,7 @@ class TorControl(
     fun onBootstrapped(torInfo: Tor.Info) {
         if (torInfo.connection.status != ConnectionStatus.CONNECTED) {
 
-            eventMonitor( msg = "Starting Bootstrap status checking job ...")
+            eventMonitor(msg = "Starting Bootstrap status checking job ...")
 
             var isSuccess: Int
             var tries = 1
@@ -224,7 +218,7 @@ class TorControl(
             if (fileControlPort.exists()) {
                 eventMonitor(msg = "Reading control port config file: " + fileControlPort.canonicalPath)
                 val bufferedReader =
-                        BufferedReader(FileReader(fileControlPort))
+                    BufferedReader(FileReader(fileControlPort))
                 val line = bufferedReader.readLine()
                 if (line != null) {
                     val lineParts = line.split(":").toTypedArray()
@@ -233,8 +227,9 @@ class TorControl(
                 bufferedReader.close()
 
             } else {
-                eventMonitor(msg = "Control Port config file does not yet exist (waiting for tor): "
-                        + fileControlPort.canonicalPath
+                eventMonitor(
+                    msg = "Control Port config file does not yet exist (waiting for tor): "
+                            + fileControlPort.canonicalPath
                 )
             }
         } catch (e: FileNotFoundException) {
@@ -255,6 +250,45 @@ class TorControl(
             it.setEvents(listOf("ORCONN", "CIRC", "NOTICE", "WARN", "ERR", "BW"))
 
             eventMonitor(msg = "SUCCESS added control port event handler")
+        }
+    }
+
+    inner class TorEventHandler(private var torControl: TorControl) : EventHandler {
+
+        override fun streamStatus(status: String?, streamID: String?, target: String?) {
+        }
+
+        override fun bandwidthUsed(read: Long, written: Long) {
+            //logger.info("BandwidthUsed:${read},${written}")
+        }
+
+        override fun orConnStatus(status: String?, orName: String?) {
+            status?.let {
+
+                if (TextUtils.equals(status, "CONNECTED")) {
+
+                    Thread(Runnable {
+                        torControl.onBootstrapped(torControl.torInfo)
+                    }).start()
+
+                } else if (TextUtils.equals(status, "FAILED")) {
+                    torControl.torInfo.connection.status = ConnectionStatus.FAILED
+                    torControl.eventMonitor(torControl.torInfo)
+                }
+            }
+
+        }
+
+        override fun newDescriptors(orList: MutableList<String>?) {
+        }
+
+        override fun unrecognized(type: String?, msg: String?) {
+        }
+
+        override fun circuitStatus(status: String?, circID: String?, path: String?) {
+        }
+
+        override fun message(severity: String?, msg: String?) {
         }
     }
 }

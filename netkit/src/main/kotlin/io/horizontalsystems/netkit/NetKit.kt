@@ -5,25 +5,24 @@ import android.content.Context
 import android.content.Intent
 import android.content.ServiceConnection
 import android.os.IBinder
-import android.util.Log
 import androidx.core.content.ContextCompat
 import io.horizontalsystems.netkit.network.ConnectionManager
 import io.horizontalsystems.tor.Tor
 import io.horizontalsystems.tor.TorManager
 import io.horizontalsystems.tor.core.TorConstants
-import io.reactivex.Observable
 import io.reactivex.Single
-import io.reactivex.disposables.Disposable
+import io.reactivex.subjects.PublishSubject
 import retrofit2.Retrofit
 import java.net.HttpURLConnection
 import java.net.Socket
 import java.net.URL
 
-class NetKit(private val context: Context) {
+class NetKit(private val context: Context): TorManager.Listener {
 
-    private val torManager = TorManager(context)
-    private var disposable: Disposable? = null
+    val torInfoSubject: PublishSubject<Tor.Info> = PublishSubject.create()
+    private val torManager = TorManager(context, this)
     private var netService: NetService? = null
+    private var torStarted = false
 
     private val connection = object : ServiceConnection {
         override fun onServiceConnected(className: ComponentName, service: IBinder) {
@@ -36,22 +35,17 @@ class NetKit(private val context: Context) {
         }
     }
 
-    fun startTor(useBridges: Boolean): Observable<Tor.Info> {
+    fun startTor(useBridges: Boolean){
+        torStarted = true
         enableProxy()
-        disposable = torManager.torObservable.subscribe({
-            netService?.updateNotification(it)
-        }, {
-            Log.e("NetKit", "error", it)
-        })
+        torManager.start(useBridges)
         startService(context)
-        return torManager.start(useBridges)
     }
 
     fun stopTor(): Single<Boolean> {
         disableProxy()
-        disposable?.dispose()
-        torManager.stop()
         netService?.stop()
+        torStarted = false
         return torManager.stop()
     }
 
@@ -70,11 +64,10 @@ class NetKit(private val context: Context) {
 
         return ConnectionManager.httpURLConnection(
             url,
-            false,//torManager.getTorInfo().isStarted,
+            false,
             TorConstants.IP_LOCALHOST,
             TorConstants.HTTP_PROXY_PORT_DEFAULT.toInt()
         )
-
     }
 
     fun buildRetrofit(url: String, timeout: Long = 60): Retrofit {
@@ -98,6 +91,13 @@ class NetKit(private val context: Context) {
 
     fun disableProxy() {
         ConnectionManager.disableSystemProxy()
+    }
+
+    override fun statusUpdate(torInfo: Tor.Info) {
+        torInfoSubject.onNext(torInfo)
+        if (torStarted) {
+            netService?.updateNotification(torInfo)
+        }
     }
 
     private fun startService(context: Context) {

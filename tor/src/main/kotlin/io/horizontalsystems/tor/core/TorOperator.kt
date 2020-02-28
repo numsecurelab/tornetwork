@@ -7,15 +7,16 @@ import io.horizontalsystems.tor.Tor
 import io.horizontalsystems.tor.utils.ProcessUtils
 import io.reactivex.Single
 import io.reactivex.schedulers.Schedulers
-import io.reactivex.subjects.Subject
 import java.io.File
 import java.io.FileNotFoundException
 import java.util.logging.Level
 import java.util.logging.Logger
 
-class TorOperator(
-        private val torSettings: Tor.Settings,
-        private val torObservable: Subject<Tor.Info>?) {
+class TorOperator(private val torSettings: Tor.Settings, private val listener: Listener): TorControl.Listener {
+
+    interface Listener{
+        fun statusUpdate(torInfo: Tor.Info)
+    }
 
     private val logger = Logger.getLogger("TorOperator")
     val torInfo = Tor.Info(Tor.Connection())
@@ -23,10 +24,9 @@ class TorOperator(
     private var torControl: TorControl? = null
     private lateinit var resManager: TorResourceManager
 
-    fun start(): Subject<Tor.Info> {
+    fun start() {
 
         try {
-
             resManager = TorResourceManager(torSettings)
             val fileTorBin = resManager.installResources()
             val success = fileTorBin != null && fileTorBin.canExecute()
@@ -52,7 +52,7 @@ class TorOperator(
                     torControl = TorControl(
                             resManager.fileTorControlPort,
                             torSettings.appDataDir,
-                            torObservable,
+                            this,
                             torInfo)
 
                     torInfo.status = EntityStatus.RUNNING
@@ -77,12 +77,16 @@ class TorOperator(
         } catch (e: java.lang.Exception) {
             torInfo.processId = -1
             torInfo.connection.status = ConnectionStatus.FAILED
+            listener.statusUpdate(torInfo)
 
             eventMonitor(torInfo = torInfo, msg = "Error starting Tor")
             eventMonitor(msg = e.message.toString())
         }
 
-        return torObservable?.let { it } ?: Subject.just(torInfo) as Subject<Tor.Info>
+    }
+
+    override fun statusUpdate(torInfo: Tor.Info) {
+        listener.statusUpdate(torInfo)
     }
 
     fun stop(): Single<Boolean> {
@@ -101,12 +105,8 @@ class TorOperator(
         }
 
         torInfo?.let {
-            torObservable?.let {
-                if (it.hasObservers()) {
-                    torInfo.statusMessage = msg
-                    it.onNext(torInfo)
-                }
-            }
+            it.statusMessage = msg
+            listener.statusUpdate(it)
         }
     }
 
