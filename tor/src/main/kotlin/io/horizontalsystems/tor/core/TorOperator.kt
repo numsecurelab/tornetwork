@@ -1,6 +1,7 @@
 package io.horizontalsystems.tor.core
 
 import com.jaredrummler.android.shell.Shell
+import io.horizontalsystems.tor.ConnectionStatus
 import io.horizontalsystems.tor.EntityStatus
 import io.horizontalsystems.tor.Tor
 import io.horizontalsystems.tor.utils.ProcessUtils
@@ -8,6 +9,7 @@ import io.reactivex.Single
 import io.reactivex.schedulers.Schedulers
 import io.reactivex.subjects.Subject
 import java.io.File
+import java.io.FileNotFoundException
 import java.util.logging.Level
 import java.util.logging.Logger
 
@@ -68,11 +70,13 @@ class TorOperator(
 
                     }
                 }
+            } else{
+                throw FileNotFoundException("Error!!! Tor.so file notfound.")
             }
 
         } catch (e: java.lang.Exception) {
             torInfo.processId = -1
-            torObservable?.onNext(torInfo)
+            torInfo.connection.status = ConnectionStatus.FAILED
 
             eventMonitor(torInfo = torInfo, msg = "Error starting Tor")
             eventMonitor(msg = e.message.toString())
