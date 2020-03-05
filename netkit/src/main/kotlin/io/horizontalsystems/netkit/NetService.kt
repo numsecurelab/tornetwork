@@ -32,6 +32,10 @@ class NetService : Service() {
         return binder
     }
 
+    override fun onTaskRemoved(rootIntent: Intent?) {
+        stop()
+    }
+
     fun stop() {
         stopForeground(true)
         stopSelf()
