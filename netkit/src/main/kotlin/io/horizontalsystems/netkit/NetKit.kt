@@ -5,6 +5,7 @@ import android.content.Context
 import android.content.Intent
 import android.content.ServiceConnection
 import android.os.IBinder
+import androidx.core.app.NotificationManagerCompat
 import androidx.core.content.ContextCompat
 import io.horizontalsystems.netkit.network.ConnectionManager
 import io.horizontalsystems.tor.Tor
@@ -34,6 +35,15 @@ class NetKit(private val context: Context): TorManager.Listener {
             netService = null
         }
     }
+
+    val isNotificationEnabled: Boolean
+        get() = when {
+            !NotificationManagerCompat.from(context).areNotificationsEnabled() -> false
+            else -> {
+                val notificationChannel = NotificationManagerCompat.from(context).getNotificationChannel(NetService.torNotificationChannelId)
+                notificationChannel?.importance != NotificationManagerCompat.IMPORTANCE_NONE
+            }
+        }
 
     fun startTor(useBridges: Boolean){
         torStarted = true

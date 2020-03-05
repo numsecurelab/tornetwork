@@ -20,7 +20,7 @@ class NetService : Service() {
     private val binder = LocalBinder()
 
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
-        createNotificationChannel(this, "Tor Connection Channel", topChannelId)
+        createNotificationChannel(this, "Tor Connection Channel", torNotificationChannelId)
 
         val notification = getNotification()
         startForeground(notificationId, notification)
@@ -71,7 +71,7 @@ class NetService : Service() {
             }
         }
 
-        return NotificationCompat.Builder(this, topChannelId)
+        return NotificationCompat.Builder(this, torNotificationChannelId)
             .setContentTitle(title)
             .setContentText(content)
             .setOngoing(true)
@@ -103,6 +103,6 @@ class NetService : Service() {
 
     companion object {
         const val notificationId = 100
-        const val topChannelId = "io.netkit.tor.channelId"
+        const val torNotificationChannelId = "torNotificationChannelId"
     }
 }
