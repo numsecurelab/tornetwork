@@ -1,5 +1,6 @@
 package io.horizontalsystems.netkit
 
+import android.annotation.SuppressLint
 import android.app.*
 import android.content.Context
 import android.content.Intent
@@ -10,6 +11,8 @@ import androidx.core.app.NotificationManagerCompat
 import io.horizontalsystems.tor.ConnectionStatus
 import io.horizontalsystems.tor.EntityStatus
 import io.horizontalsystems.tor.Tor
+import io.horizontalsystems.tor.TorManager
+import kotlin.system.exitProcess
 
 
 class NetService : Service() {
@@ -34,15 +37,25 @@ class NetService : Service() {
 
     override fun onTaskRemoved(rootIntent: Intent?) {
         stop()
+        //exitProcess(0)
     }
 
+    @SuppressLint("CheckResult")
     fun stop() {
-        stopForeground(true)
-        stopSelf()
+
+        TorManager.instance.stop().subscribe(
+            {
+                // Close notifications
+                stopForeground(true)
+                stopSelf()
+            }, {
+                //Do not close Notification on Error
+            })
     }
 
     fun updateNotification(torInfo: Tor.Info?) {
-        val notificationManager = getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
+        val notificationManager =
+            getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
         notificationManager.notify(notificationId, getNotification(torInfo))
     }
 

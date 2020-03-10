@@ -17,7 +17,6 @@ class TorFileObserver(path: String) : FileObserver(path, CREATE) {
     }
 
     override fun onEvent(event: Int, path: String?) {
-
     }
 }
 
@@ -33,13 +32,15 @@ object FileUtils {
 object ProcessUtils {
 
     @Throws(IOException::class)
-    fun findProcessId(command: String?): Int {
+    fun findProcessId(processName: String): Int {
         val procPs: Process = Runtime.getRuntime().exec(TorConstants.SHELL_CMD_PS)
         val reader = BufferedReader(InputStreamReader(procPs.inputStream))
-        var line: String
-        while (reader.readLine().also { line = it } != null) {
-            if (!line.contains("PID") && line.contains(command!!)) {
-                val lineParts = line.split("\\s+").toTypedArray()
+        var line: String? = reader.readLine()
+
+        while(line != null) {
+
+            if (line.contains(processName)) {
+                val lineParts = line.split("\\s+".toRegex()).toTypedArray()
                 return try {
                     lineParts[1].toInt() //for most devices it is the second
                 } catch (e: NumberFormatException) {
@@ -51,7 +52,10 @@ object ProcessUtils {
                     }
                 }
             }
+
+            line = reader.readLine()
         }
+
         return -1
     }
 
@@ -64,7 +68,7 @@ object ProcessUtils {
     fun killProcess(fileProcBin: File, signal: String) {
         var procId = -1
         var killAttempts = 0
-        while (findProcessId(fileProcBin.canonicalPath).also { procId = it } != -1) {
+        while (findProcessId(fileProcBin.name).also { procId = it } != -1) {
 
             killAttempts++
             val pidString = procId.toString()
@@ -89,6 +93,10 @@ object ProcessUtils {
     @Throws(Exception::class)
     fun killProcess(pidString: String, signal: String) {
         try {
+            Runtime.getRuntime().exec("kill $signal $pidString")
+        } catch (ioe: IOException) {
+        }
+        try {
             Runtime.getRuntime().exec("toolbox kill $signal $pidString")
         } catch (ioe: IOException) {
         }
@@ -96,10 +104,5 @@ object ProcessUtils {
             Runtime.getRuntime().exec("busybox kill $signal $pidString")
         } catch (ioe: IOException) {
         }
-        try {
-            Runtime.getRuntime().exec("kill $signal $pidString")
-        } catch (ioe: IOException) {
-        }
     }
-
 }

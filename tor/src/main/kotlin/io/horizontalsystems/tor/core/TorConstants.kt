@@ -9,7 +9,7 @@ interface TorConstants {
         const val TOR_CONTROL_PORT_FILE = "control.txt"
         const val LIB_NAME = "tor"
         const val LIB_SO_NAME = "tor.so"
-        const val SHELL_CMD_PS = "toolbox ps"
+        const val SHELL_CMD_PS = "ps"
 
         //geoip data file asset key
         const val GEOIP_ASSET_KEY = "geoip"
