@@ -37,19 +37,18 @@ class NetService : Service() {
 
     override fun onTaskRemoved(rootIntent: Intent?) {
         stop()
-        //exitProcess(0)
     }
 
     @SuppressLint("CheckResult")
     fun stop() {
-
         TorManager.instance.stop().subscribe(
             {
-                // Close notifications
+                // Close notifications and exit App
                 stopForeground(true)
-                stopSelf()
+                exitProcess(0)
             }, {
-                //Do not close Notification on Error
+                //Exit app on Error
+                exitProcess(0)
             })
     }
 
