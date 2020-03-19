@@ -39,7 +39,7 @@ dependencies {
     implementation "org.jetbrains.kotlin:kotlin-stdlib-jdk7:$kotlin_version"
     implementation 'androidx.appcompat:appcompat:1.2.0-alpha02'
 
-    //api 'info.pluggabletransports.aptds:apt-meek-obfs4-legacy:1.0.7'
+    api 'info.pluggabletransports.aptds:apt-meek-obfs4-legacy:1.0.7'
     api 'com.jaredrummler:android-shell:1.0.0'
     api 'org.briarproject:jtorctl:0.3'
     api 'com.jaredrummler:android-shell:1.0.0'
